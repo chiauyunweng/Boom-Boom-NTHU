@@ -1,6 +1,7 @@
 import sys
 import pygame
 from scenes.dialogue_scene import play_dialogue
+from scenes.fishing_scene import play_fishing
 
 
 def main():
@@ -18,10 +19,32 @@ def main():
   pygame.display.set_caption("Visual Novel Game")
 
   print("--- 遊戲開始 ---")
+  
 
   # 依次呼叫各個章節的對話 JSON
   play_dialogue("dialogues/dialogue_crash.json")
   play_dialogue("dialogues/dialogue_confrontation.json")
+
+  # 上機考
+  play_dialogue("dialogues/puzzle_find_room.json")
+  play_dialogue("dialogues/puzzle_wrong.json")           # 之後改為：提交錯誤時觸發
+  play_dialogue("dialogues/puzzle_find_room_correct.json")
+  play_dialogue("dialogues/puzzle_succeed.json")
+  play_dialogue("dialogues/puzzle_fail.json")            # 之後改為：第一關重試超過五次觸發
+
+  play_dialogue("dialogues/fishing_intro.json")
+  inventory = play_fishing()                                      # 釣完所有物品、且最後一次成功才返回
+  play_dialogue("dialogues/fishing_quit.json")
+
+  # 化學館
+  play_dialogue("dialogues/alchemy_find_clue.json")
+  play_dialogue("dialogues/alchemy_device.json")
+  play_dialogue("dialogues/alchemy_wrong_procedure.json")  # 之後改為：操作順序錯誤時觸發
+  play_dialogue("dialogues/alchemy_succeed.json")
+
+  # 結局
+  play_dialogue("dialogues/ending_succeed.json")
+  play_dialogue("dialogues/alchemy_failed.json")         # 之後改為：失敗結局才觸發
 
   print("--- 遊戲結束 ---")
   pygame.quit()
