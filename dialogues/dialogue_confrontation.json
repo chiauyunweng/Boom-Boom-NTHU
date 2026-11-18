@@ -1,0 +1,129 @@
+{
+  "dialogue_id": "confrontation",
+  "original_id": "confrontation",
+  "bg": "bg_dlg_confrontation",
+  "characters": [
+    "short_and_square",
+    "tall_and_round"
+  ],
+  "lines": [
+    {
+      "speaker": "高為元",
+      "speaker_id": "tall_and_round",
+      "text": "……根據調查報告，你是來自LMC-84DE02 b的未知生命體。"
+    },
+    {
+      "speaker": "高為元",
+      "speaker_id": "tall_and_round",
+      "text": "有朋自遠方來，我定不會驅之別院。"
+    },
+    {
+      "speaker": "高為元",
+      "speaker_id": "tall_and_round",
+      "text": "對此我們希望能掌握更多關於你的故事，你有什麼想說的嗎？"
+    },
+    {
+      "speaker": "矮為方",
+      "speaker_id": "short_and_square",
+      "text": "我不知道為什麼我會在這裡……"
+    },
+    {
+      "speaker": "矮為方",
+      "speaker_id": "short_and_square",
+      "text": "我只知道……我要把清華大學「炸了」。"
+    },
+    {
+      "speaker": "",
+      "speaker_id": null,
+      "text": "(空氣陷入了沉默)"
+    },
+    {
+      "speaker": "高為元",
+      "speaker_id": "tall_and_round",
+      "text": "(現在驅之別院還來得及嗎？)"
+    },
+    {
+      "speaker": "高為元",
+      "speaker_id": "tall_and_round",
+      "text": "(看來只能這樣了……)"
+    },
+    {
+      "speaker": "高為元",
+      "speaker_id": "tall_and_round",
+      "text": "咳咳，從你的夢想，我看出了你的潛能。"
+    },
+    {
+      "speaker": "高為元",
+      "speaker_id": "tall_and_round",
+      "text": "我們最需要這種有夢想的人才了，因此我在此邀請你加入清華大學的大家庭。"
+    },
+    {
+      "speaker": "高為元",
+      "speaker_id": "tall_and_round",
+      "text": "我們清華向來尊重多元文化。從今天開始，你就從河外星系轉來資工系。"
+    },
+    {
+      "speaker": "高為元",
+      "speaker_id": "tall_and_round",
+      "text": "一來，資工系課業繁忙，保證讓你沒時間胡思亂想。二來，資工系沒有實驗課，你也沒辦法趁機做炸彈。"
+    },
+    {
+      "speaker": "",
+      "speaker_id": null,
+      "text": "（高為元從檔案夾中拿出資工系的課表。）"
+    },
+    {
+      "speaker": "矮為方",
+      "speaker_id": "short_and_square",
+      "text": "可是炸掉……"
+    },
+    {
+      "speaker": "高為元",
+      "speaker_id": "tall_and_round",
+      "text": "明天開始上課。你的行蹤，我會隨時掌握。"
+    },
+    {
+      "speaker": "矮為方",
+      "speaker_id": "short_and_square",
+      "text": "ㄜ……"
+    },
+    {
+      "speaker": "高為元",
+      "speaker_id": "tall_and_round",
+      "text": "不多說，我還要趕著去夏威夷出公差呢，請回吧。"
+    },
+    {
+      "speaker": "",
+      "speaker_id": null,
+      "text": "（矮為方走出校長室，發現門外有個身影。）",
+      "characters": [
+        "short_and_square"
+      ],
+      "props": [
+        "char_TA_silhouette"
+      ]
+    },
+    {
+      "speaker": "矮為方",
+      "speaker_id": "short_and_square",
+      "text": "……有人在偷聽？",
+      "characters": [
+        "short_and_square"
+      ],
+      "props": [
+        "char_TA_silhouette"
+      ]
+    },
+    {
+      "speaker": "",
+      "speaker_id": null,
+      "text": "(一張寫著「上機考見(⁠･⁠–⁠･⁠)⁠ ⁠⁠\\(⁠･⁠◡⁠･⁠)⁠/(⁠･⁠–⁠･⁠)⁠ ⁠⁠\\(⁠･⁠◡⁠･⁠)⁠/」的紙條⋯⋯)",
+      "characters": [
+        "short_and_square"
+      ],
+      "props": [
+        "char_TA_silhouette"
+      ]
+    }
+  ]
+}

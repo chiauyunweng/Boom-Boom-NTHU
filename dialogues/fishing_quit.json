@@ -1,0 +1,25 @@
+{
+  "dialogue_id": "fishing_quit",
+  "original_id": "fishing_object_contexts",
+  "bg": null,
+  "characters": [
+    "short_and_square"
+  ],
+  "lines": [
+    {
+      "speaker": "離散數學老師",
+      "speaker_id": null,
+      "text": "我覺得你釣魚釣了這麼多東西，可以二退了。"
+    },
+    {
+      "speaker": "矮為方",
+      "speaker_id": "short_and_square",
+      "text": "......這是叫我走嗎？那我走？"
+    },
+    {
+      "speaker": "",
+      "speaker_id": null,
+      "text": "(於是矮為方離開了成功湖。)"
+    }
+  ]
+}

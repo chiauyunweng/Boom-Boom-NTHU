@@ -1,0 +1,17 @@
+{
+  "dialogue_id": "fishing_item_texts",
+  "original_id": "fishing_object_contexts",
+  "note": "釣到物品的說明文字（待填）",
+  "bg": null,
+  "characters": [
+    "short_and_square"
+  ],
+  "items": {
+    "高姐姐的腳踏車": "",
+    "DYY的銅板": "",
+    "學生腐爛的夢想": "",
+    "氫化鋁鋰": "",
+    "漁父的包包": ""
+  },
+  "lines": []
+}

@@ -1,0 +1,20 @@
+{
+  "dialogue_id": "puzzle_succeed",
+  "original_id": "puzzle_succeed",
+  "bg": null,
+  "characters": [
+    "short_and_square"
+  ],
+  "lines": [
+    {
+      "speaker": "",
+      "speaker_id": null,
+      "text": "（成功解開文件。）"
+    },
+    {
+      "speaker": "矮為方",
+      "speaker_id": "short_and_square",
+      "text": "原來如此！終於有線索了！"
+    }
+  ]
+}

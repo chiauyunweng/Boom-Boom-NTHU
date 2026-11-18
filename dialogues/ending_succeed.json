@@ -1,0 +1,74 @@
+{
+  "dialogue_id": "ending_succeed",
+  "original_id": "ending_succeed",
+  "bg": null,
+  "characters": [
+    "short_and_square"
+  ],
+  "lines": [
+    {
+      "speaker": "",
+      "speaker_id": null,
+      "text": "（矮為方終於完成所有準備，來到大禮堂。）",
+      "characters": [
+        "short_and_square"
+      ]
+    },
+    {
+      "speaker": "矮為方",
+      "speaker_id": "short_and_square",
+      "text": "哈哈哈！終於到了這一天！",
+      "characters": [
+        "short_and_square"
+      ]
+    },
+    {
+      "speaker": "矮為方",
+      "speaker_id": "short_and_square",
+      "text": "清華大學……今天就是你的末日！",
+      "characters": [
+        "short_and_square"
+      ]
+    },
+    {
+      "speaker": "",
+      "speaker_id": null,
+      "text": "（畫面一陣劇烈震動，隨後陷入黑暗。）",
+      "characters": [
+        "short_and_square"
+      ]
+    },
+    {
+      "speaker": "",
+      "speaker_id": null,
+      "text": "（畫面切換）",
+      "characters": [
+        "short_and_square"
+      ]
+    },
+    {
+      "speaker": "高為元",
+      "speaker_id": "tall_and_round",
+      "text": "……",
+      "characters": [
+        "tall_and_round"
+      ]
+    },
+    {
+      "speaker": "高為元",
+      "speaker_id": "tall_and_round",
+      "text": "所以，我只是出了一趟公差，回來清華就變成這樣了？",
+      "characters": [
+        "tall_and_round"
+      ]
+    },
+    {
+      "speaker": "高為元",
+      "speaker_id": "tall_and_round",
+      "text": "看來今年的校務評鑑又有得忙了。",
+      "characters": [
+        "tall_and_round"
+      ]
+    }
+  ]
+}

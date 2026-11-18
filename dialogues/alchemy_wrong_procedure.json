@@ -1,0 +1,31 @@
+{
+  "dialogue_id": "alchemy_wrong_procedure",
+  "original_id": "alchemy_wrong_procedure",
+  "note": "若提交的操作順序錯誤",
+  "bg": null,
+  "characters": [
+    "short_and_square"
+  ],
+  "lines": [
+    {
+      "speaker": "",
+      "speaker_id": null,
+      "text": "（實驗室紅燈閃爍，警報聲突然響起。）"
+    },
+    {
+      "speaker": "矮為方",
+      "speaker_id": "short_and_square",
+      "text": "啊啊啊！只是順序錯了而已，警報怎麼會響？！"
+    },
+    {
+      "speaker": "矮為方",
+      "speaker_id": "short_and_square",
+      "text": "會不會有人過來？！"
+    },
+    {
+      "speaker": "矮為方",
+      "speaker_id": "short_and_square",
+      "text": "可惡！看來不能再亂試了！"
+    }
+  ]
+}

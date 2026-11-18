@@ -1,0 +1,21 @@
+{
+  "dialogue_id": "puzzle_fail",
+  "original_id": "puzzle_fail",
+  "note": "（第一關重試超過五次觸發，觸發後遊戲重新開始）",
+  "bg": null,
+  "characters": [
+    "short_and_square"
+  ],
+  "lines": [
+    {
+      "speaker": "",
+      "speaker_id": null,
+      "text": "(TLE)"
+    },
+    {
+      "speaker": "矮為方",
+      "speaker_id": "short_and_square",
+      "text": "……我就知道資工系不好混。"
+    }
+  ]
+}

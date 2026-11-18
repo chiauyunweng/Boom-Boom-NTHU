@@ -1,0 +1,72 @@
+{
+  "dialogue_id": "alchemy_failed",
+  "original_id": "alchemy_failed",
+  "bg": null,
+  "characters": [
+    "short_and_square",
+    "tall_and_round"
+  ],
+  "lines": [
+    {
+      "speaker": "矮為方",
+      "speaker_id": "short_and_square",
+      "text": "可惡......看來只能先離開化學館暫避風頭了。",
+      "characters": [
+        "short_and_square"
+      ]
+    },
+    {
+      "speaker": "",
+      "speaker_id": null,
+      "text": "（矮為方正準備帶著「炸彈半成品」離開化學館。）",
+      "characters": [
+        "short_and_square"
+      ]
+    },
+    {
+      "speaker": "高為元",
+      "speaker_id": "tall_and_round",
+      "text": "矮為方同學，我想你應該需要解釋一下。"
+    },
+    {
+      "speaker": "矮為方",
+      "speaker_id": "short_and_square",
+      "text": "校、校長？你怎麼會在這裡？！"
+    },
+    {
+      "speaker": "高為元",
+      "speaker_id": "tall_and_round",
+      "text": "教授早就把你的行蹤通報給我了。"
+    },
+    {
+      "speaker": "矮為方",
+      "speaker_id": "short_and_square",
+      "text": "......竟然被發現了嗎！"
+    },
+    {
+      "speaker": "高為元",
+      "speaker_id": "tall_and_round",
+      "text": "看來你的資工系課業還不夠繁忙。"
+    },
+    {
+      "speaker": "",
+      "speaker_id": null,
+      "text": "（駐警隊將矮為方帶走。）"
+    },
+    {
+      "speaker": "矮為方",
+      "speaker_id": "short_and_square",
+      "text": "不要啊啊啊！！！"
+    },
+    {
+      "speaker": "高為元",
+      "speaker_id": "tall_and_round",
+      "text": "明天記得來上課，缺席的話期末會被當掉喔。"
+    },
+    {
+      "speaker": "系統提示",
+      "speaker_id": null,
+      "text": "任務失敗！"
+    }
+  ]
+}

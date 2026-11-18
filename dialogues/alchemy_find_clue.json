@@ -1,0 +1,40 @@
+{
+  "dialogue_id": "alchemy_find_clue",
+  "original_id": "go_alchemy_1",
+  "bg": null,
+  "characters": [
+    "short_and_square"
+  ],
+  "lines": [
+    {
+      "speaker": "矮為方",
+      "speaker_id": "short_and_square",
+      "text": "終於收集到這麼多奇怪的東西了！"
+    },
+    {
+      "speaker": "矮為方",
+      "speaker_id": "short_and_square",
+      "text": "高姐姐的腳踏車、DYY的銅板、學生腐爛的夢想……這些東西真的能派上用場嗎？"
+    },
+    {
+      "speaker": "",
+      "speaker_id": null,
+      "text": "（矮為方拿出上機考時取得的文件，仔細查看。）"
+    },
+    {
+      "speaker": "矮為方",
+      "speaker_id": "short_and_square",
+      "text": "等等！紙條上的線索似乎指向化學館！"
+    },
+    {
+      "speaker": "矮為方",
+      "speaker_id": "short_and_square",
+      "text": "原來如此，最後的任務就在那裡！"
+    },
+    {
+      "speaker": "",
+      "speaker_id": null,
+      "text": "（矮為方偷偷走進化學館。）"
+    }
+  ]
+}

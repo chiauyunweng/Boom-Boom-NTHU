@@ -1,0 +1,70 @@
+{
+  "dialogue_id": "fishing_intro",
+  "original_id": "go_fishing",
+  "bg": null,
+  "characters": [
+    "short_and_square"
+  ],
+  "lines": [
+    {
+      "speaker": "矮為方",
+      "speaker_id": "short_and_square",
+      "text": "紙條上寫著「成功湖」……那裡到底有什麼？"
+    },
+    {
+      "speaker": "矮為方",
+      "speaker_id": "short_and_square",
+      "text": "等等，我根本不知道怎麼去！"
+    },
+    {
+      "speaker": "",
+      "speaker_id": null,
+      "text": "（兩隻狗突然跑了過來。）"
+    },
+    {
+      "speaker": "牛排",
+      "speaker_id": null,
+      "text": "汪汪！成功湖嗎？"
+    },
+    {
+      "speaker": "巧巧",
+      "speaker_id": null,
+      "text": "汪！找我們就對了！我們可是清大在地狗！"
+    },
+    {
+      "speaker": "",
+      "speaker_id": null,
+      "text": "（巧巧和牛排帶著矮為方抵達了成功湖。）"
+    },
+    {
+      "speaker": "牛排",
+      "speaker_id": null,
+      "text": "到了！接下來就靠你自己了！"
+    },
+    {
+      "speaker": "巧巧",
+      "speaker_id": null,
+      "text": "祝你好運！汪！"
+    },
+    {
+      "speaker": "矮為方",
+      "speaker_id": "short_and_square",
+      "text": "這裡真的有我要找的東西嗎？"
+    },
+    {
+      "speaker": "",
+      "speaker_id": null,
+      "text": "（湖面突然泛起奇異的光芒。）"
+    },
+    {
+      "speaker": "矮為方",
+      "speaker_id": "short_and_square",
+      "text": "嗯？這是什麼？釣竿？"
+    },
+    {
+      "speaker": "",
+      "speaker_id": null,
+      "text": "（開始釣魚。）"
+    }
+  ]
+}

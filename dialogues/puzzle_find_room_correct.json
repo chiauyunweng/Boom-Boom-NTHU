@@ -1,0 +1,30 @@
+{
+  "dialogue_id": "puzzle_find_room_correct",
+  "original_id": "puzzle_find_room_correct",
+  "bg": null,
+  "characters": [
+    "short_and_square"
+  ],
+  "lines": [
+    {
+      "speaker": "",
+      "speaker_id": null,
+      "text": "（矮為方找到自己的座位，發現桌上有一張紙條。）"
+    },
+    {
+      "speaker": "矮為方",
+      "speaker_id": "short_and_square",
+      "text": "這是什麼意思？"
+    },
+    {
+      "speaker": "矮為方",
+      "speaker_id": "short_and_square",
+      "text": "看來有人想告訴我什麼……"
+    },
+    {
+      "speaker": "矮為方",
+      "speaker_id": "short_and_square",
+      "text": "兩分鐘？這比我的飛船墜毀倒數還刺激！"
+    }
+  ]
+}

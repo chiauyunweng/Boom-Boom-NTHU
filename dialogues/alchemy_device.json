@@ -1,0 +1,35 @@
+{
+  "dialogue_id": "alchemy_device",
+  "original_id": "go_alchemy_2",
+  "bg": null,
+  "characters": [
+    "short_and_square"
+  ],
+  "lines": [
+    {
+      "speaker": "",
+      "speaker_id": null,
+      "text": "（矮為方找到一台陌生的實驗裝置和一張說明書。）"
+    },
+    {
+      "speaker": "矮為方",
+      "speaker_id": "short_and_square",
+      "text": "終於找到了！看來這就是完成最後任務需要的設備。"
+    },
+    {
+      "speaker": "",
+      "speaker_id": null,
+      "text": "（拿起說明書）"
+    },
+    {
+      "speaker": "矮為方",
+      "speaker_id": "short_and_square",
+      "text": "原來還有順序限制……讓我試試看！"
+    },
+    {
+      "speaker": "",
+      "speaker_id": null,
+      "text": "（矮為方開始將先前收集到的物品放入裝置。）"
+    }
+  ]
+}

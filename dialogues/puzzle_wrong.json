@@ -1,0 +1,16 @@
+{
+  "dialogue_id": "puzzle_wrong",
+  "original_id": "puzzle_wrong",
+  "note": "提交的座位選擇錯誤、文件解謎提交錯誤答案時觸發",
+  "bg": null,
+  "characters": [
+    "short_and_square"
+  ],
+  "lines": [
+    {
+      "speaker": "矮為方",
+      "speaker_id": "short_and_square",
+      "text": "好像不太對......"
+    }
+  ]
+}
