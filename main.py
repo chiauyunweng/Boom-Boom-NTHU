@@ -1,6 +1,7 @@
 import sys
 import pygame
 from scenes.dialogue_scene import play_dialogue
+from scenes.alchemy_scene import play_alchemy_chapter
 from scenes.fishing_scene import play_fishing
 
 
@@ -24,6 +25,10 @@ def main():
   # 依次呼叫各個章節的對話 JSON
   play_dialogue("dialogues/dialogue_crash.json")
   play_dialogue("dialogues/dialogue_confrontation.json")
+
+  # TODO：解謎、釣魚關卡完成後接在這裡，並把釣到的物品傳給化學館
+  caught_items = None   # None = 全部物品
+  play_alchemy_chapter(caught_items)
 
   # 上機考
   play_dialogue("dialogues/puzzle_find_room.json")
