@@ -2,12 +2,14 @@
   "dialogue_id": "crash",
   "original_id": "crash",
   "bg": "bg_dlg_crash",
+  "bgm": "panic",
   "show_characters": false,
   "lines": [
     {
       "speaker": "",
       "speaker_id": null,
-      "text": "（轟！！！飛船墜落，大禮堂冒出陣陣濃煙。）"
+      "text": "（轟！！！飛船墜落，大禮堂冒出陣陣濃煙。）",
+      "sfx": "explosion"
     },
     {
       "speaker": "學生A",
@@ -27,7 +29,8 @@
     {
       "speaker": "",
       "speaker_id": null,
-      "text": "（駐警隊及消防隊匆匆趕到，後在廢墟中發現不明外星生物，將他帶到校長室。）"
+      "text": "（駐警隊及消防隊匆匆趕到，後在廢墟中發現不明外星生物，將他帶到校長室。）",
+      "sfx": "siren"
     }
   ]
 }

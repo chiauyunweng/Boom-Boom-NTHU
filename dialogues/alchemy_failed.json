@@ -2,6 +2,7 @@
   "dialogue_id": "alchemy_failed",
   "original_id": "alchemy_failed",
   "bg": null,
+  "bgm": "lab",
   "characters": [
     "short_and_square",
     "tall_and_round"
@@ -26,7 +27,8 @@
     {
       "speaker": "高為元",
       "speaker_id": "tall_and_round",
-      "text": "矮為方同學，我想你應該需要解釋一下。"
+      "text": "矮為方同學，我想你應該需要解釋一下。",
+      "bgm": "office"
     },
     {
       "speaker": "矮為方",
@@ -51,7 +53,8 @@
     {
       "speaker": "",
       "speaker_id": null,
-      "text": "（駐警隊將矮為方帶走。）"
+      "text": "（駐警隊將矮為方帶走。）",
+      "sfx": "whistle"
     },
     {
       "speaker": "矮為方",
@@ -66,7 +69,9 @@
     {
       "speaker": "系統提示",
       "speaker_id": null,
-      "text": "任務失敗！"
+      "text": "任務失敗！",
+      "sfx": "fail_jingle",
+      "bgm": "none"
     }
   ]
 }

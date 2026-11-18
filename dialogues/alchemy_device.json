@@ -2,6 +2,7 @@
   "dialogue_id": "alchemy_device",
   "original_id": "go_alchemy_2",
   "bg": null,
+  "bgm": "lab",
   "characters": [
     "short_and_square"
   ],
@@ -9,7 +10,8 @@
     {
       "speaker": "",
       "speaker_id": null,
-      "text": "（矮為方找到一台陌生的實驗裝置和一張說明書。）"
+      "text": "（矮為方找到一台陌生的實驗裝置和一張說明書。）",
+      "sfx": "machine"
     },
     {
       "speaker": "矮為方",

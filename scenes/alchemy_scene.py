@@ -14,7 +14,7 @@ import sys
 
 import pygame
 
-from scenes import sfx
+from scenes import music, sfx
 from scenes.dialogue_scene import (
     ASSET_DIR, FONT_ANTIALIAS, SCREEN_H, SCREEN_W, _make_font, _present, _wrap, play_dialogue,
 )
@@ -248,6 +248,7 @@ def run_alchemy(items=None):
     wrong_count = 0             # 放錯次數
     last_tick = None            # 最後 10 秒每秒響一次
 
+    music.play("tension")
     pygame.key.stop_text_input()
     pygame.event.clear()
 
@@ -315,6 +316,7 @@ def run_alchemy(items=None):
             wrong_count += 1
             if wrong_count == 1:
                 play_dialogue("alchemy_wrong_procedure")   # 第一句會響警報（JSON 的 "sfx": "alarm"）
+                music.play("tension")                      # 劇情把音樂停掉了，回到小遊戲時重新播放
             else:
                 sfx.play("alarm")
                 clock.tick()           # 丟掉劇情期間累積的時間

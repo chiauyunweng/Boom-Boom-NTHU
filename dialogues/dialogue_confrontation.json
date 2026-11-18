@@ -2,6 +2,7 @@
   "dialogue_id": "confrontation",
   "original_id": "confrontation",
   "bg": "bg_dlg_confrontation",
+  "bgm": "office",
   "characters": [
     "short_and_square",
     "tall_and_round"
@@ -41,7 +42,8 @@
       "text": "(空氣陷入了沉默)",
       "states": {
         "tall_and_round": "frown"
-      }
+      },
+      "bgm": "none"
     },
     {
       "speaker": "高為元",
@@ -49,7 +51,8 @@
       "text": "(現在驅之別院還來得及嗎？)",
       "states": {
         "tall_and_round": "frown"
-      }
+      },
+      "bgm": "office"
     },
     {
       "speaker": "高為元",
@@ -82,7 +85,8 @@
     {
       "speaker": "",
       "speaker_id": null,
-      "text": "（高為元從檔案夾中拿出資工系的課表。）"
+      "text": "（高為元從檔案夾中拿出資工系的課表。）",
+      "sfx": "paper"
     },
     {
       "speaker": "矮為方",
@@ -113,7 +117,8 @@
       ],
       "props": [
         "char_TA_silhouette"
-      ]
+      ],
+      "sfx": "door"
     },
     {
       "speaker": "矮為方",
@@ -135,7 +140,8 @@
       ],
       "props": [
         "char_TA_silhouette"
-      ]
+      ],
+      "sfx": "paper"
     }
   ]
 }

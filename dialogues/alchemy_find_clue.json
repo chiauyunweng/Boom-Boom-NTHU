@@ -2,6 +2,7 @@
   "dialogue_id": "alchemy_find_clue",
   "original_id": "go_alchemy_1",
   "bg": "bg_dlg_go_alchemy",
+  "bgm": "campus",
   "characters": [
     "short_and_square"
   ],
@@ -19,7 +20,8 @@
     {
       "speaker": "",
       "speaker_id": null,
-      "text": "（矮為方拿出上機考時取得的文件，仔細查看。）"
+      "text": "（矮為方拿出上機考時取得的文件，仔細查看。）",
+      "sfx": "paper"
     },
     {
       "speaker": "矮為方",
@@ -34,7 +36,9 @@
     {
       "speaker": "",
       "speaker_id": null,
-      "text": "（矮為方偷偷走進化學館。）"
+      "text": "（矮為方偷偷走進化學館。）",
+      "sfx": "footsteps",
+      "bgm": "lab"
     }
   ]
 }

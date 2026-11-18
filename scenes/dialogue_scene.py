@@ -17,7 +17,7 @@ from pathlib import Path
 
 import pygame
 
-from scenes import sfx
+from scenes import music, sfx
 
 # ---------------- 路徑 ----------------
 BASE_DIR = Path(__file__).resolve().parent.parent   # your_game_project/
@@ -217,7 +217,10 @@ def play_dialogue(json_path, screen=None, events=None):
     pygame.key.stop_text_input()
     pygame.event.clear()  # 清掉上一個畫面殘留的按鍵事件
 
+    music.play(scene.get("bgm"))                            # 整段的背景音樂；沒寫就延續前一首
+
     for line in scene["lines"]:
+        music.play(line.get("bgm"))                         # 單句切換背景音樂（"none" = 停止）
         if line.get("sfx"):                                 # 例如 "sfx": "alarm"，該句出現時播放
             sfx.play(line["sfx"])
         bg_name = line.get("bg", scene.get("bg"))
@@ -262,7 +265,9 @@ def play_dialogue(json_path, screen=None, events=None):
                     (event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE)
                     # 備援：輸入法仍攔截時，空白會以 TEXTINPUT 事件送來
                     or (event.type == pygame.TEXTINPUT and event.text == " ")
+                    or (event.type == pygame.MOUSEBUTTONDOWN and event.button == 1)   # 滑鼠左鍵點擊
                 ):
+                    sfx.play("advance")
                     if shown < total:                       # 還在逐字：先全部顯示
                         elapsed_ms = int(total * 1000 / CHARS_PER_SEC) + 1
                         shown = total

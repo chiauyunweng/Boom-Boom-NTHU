@@ -10,7 +10,8 @@
     {
       "speaker": "矮為方",
       "speaker_id": "short_and_square",
-      "text": "好像不太對......"
+      "text": "好像不太對......",
+      "sfx": "buzz"
     }
   ]
 }

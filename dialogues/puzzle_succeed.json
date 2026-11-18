@@ -2,6 +2,7 @@
   "dialogue_id": "puzzle_succeed",
   "original_id": "puzzle_succeed",
   "bg": null,
+  "bgm": "campus",
   "characters": [
     "short_and_square"
   ],
@@ -9,7 +10,8 @@
     {
       "speaker": "",
       "speaker_id": null,
-      "text": "（成功解開文件。）"
+      "text": "（成功解開文件。）",
+      "sfx": "success"
     },
     {
       "speaker": "矮為方",

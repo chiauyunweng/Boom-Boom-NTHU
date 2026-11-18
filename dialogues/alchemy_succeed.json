@@ -3,6 +3,7 @@
   "original_id": "alchemy_succeed",
   "note": "玩家成功組裝炸彈：",
   "bg": null,
+  "bgm": "none",
   "characters": [
     "short_and_square"
   ],
@@ -10,12 +11,14 @@
     {
       "speaker": "",
       "speaker_id": null,
-      "text": "（裝置發出耀眼的藍色光芒，中央出現一顆奇異的結晶。）"
+      "text": "（裝置發出耀眼的藍色光芒，中央出現一顆奇異的結晶。）",
+      "sfx": "sparkle"
     },
     {
       "speaker": "矮為方",
       "speaker_id": "short_and_square",
-      "text": "哈哈哈！終於成功了！"
+      "text": "哈哈哈！終於成功了！",
+      "bgm": "villain"
     },
     {
       "speaker": "矮為方",
@@ -25,7 +28,8 @@
     {
       "speaker": "",
       "speaker_id": null,
-      "text": "（畫面轉黑。）"
+      "text": "（畫面轉黑。）",
+      "bgm": "none"
     }
   ]
 }

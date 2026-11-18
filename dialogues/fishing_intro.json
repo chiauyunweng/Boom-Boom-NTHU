@@ -2,6 +2,7 @@
   "dialogue_id": "fishing_intro",
   "original_id": "go_fishing",
   "bg": "bg_dlg_go_fishing",
+  "bgm": "campus",
   "characters": [
     "short_and_square"
   ],
@@ -23,7 +24,8 @@
       "characters": [
         "short_and_square",
         "steak"
-      ]
+      ],
+      "sfx": "bark"
     },
     {
       "speaker": "牛排",
@@ -50,7 +52,8 @@
       "characters": [
         "short_and_square",
         "choco"
-      ]
+      ],
+      "sfx": "footsteps"
     },
     {
       "speaker": "牛排",
@@ -78,7 +81,9 @@
     {
       "speaker": "",
       "speaker_id": null,
-      "text": "（湖面突然泛起奇異的光芒。）"
+      "text": "（湖面突然泛起奇異的光芒。）",
+      "sfx": "sparkle",
+      "bgm": "lake"
     },
     {
       "speaker": "矮為方",

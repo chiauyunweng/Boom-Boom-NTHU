@@ -3,6 +3,7 @@
   "original_id": "alchemy_wrong_procedure",
   "note": "若提交的操作順序錯誤",
   "bg": null,
+  "bgm": "none",
   "characters": [
     "short_and_square"
   ],

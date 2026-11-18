@@ -3,6 +3,7 @@
   "original_id": "puzzle_fail",
   "note": "（第一關重試超過五次觸發，觸發後遊戲重新開始）",
   "bg": null,
+  "bgm": "none",
   "characters": [
     "short_and_square"
   ],
@@ -10,7 +11,8 @@
     {
       "speaker": "",
       "speaker_id": null,
-      "text": "(TLE)"
+      "text": "(TLE)",
+      "sfx": "fail_jingle"
     },
     {
       "speaker": "矮為方",

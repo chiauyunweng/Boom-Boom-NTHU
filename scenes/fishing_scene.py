@@ -26,6 +26,7 @@ import sys
 
 import pygame
 
+from scenes import music, sfx
 from scenes.dialogue_scene import (
     ASSET_DIR, FONT_ANTIALIAS, SCREEN_H, SCREEN_W, SPEAKER_COLOR, TEXT_COLOR,
     _make_font, _present, _resolve_dialogue, _wrap,
@@ -191,6 +192,7 @@ class FishingGame:
 
     # ---------- 第二階段 ----------
     def on_success(self):
+        sfx.play("catch")
         if not self.items:            # 物品已釣完：這次成功就直接結束遊戲
             self.done = True
             return
@@ -202,6 +204,7 @@ class FishingGame:
         self.state = ITEM
 
     def on_fail(self):
+        sfx.play("miss")
         self.fail_timer = pygame.time.get_ticks()
         self.state = FAIL
 
@@ -233,16 +236,19 @@ class FishingGame:
         if self.state == READY:
             if space:
                 self.state = MOVING
+                sfx.play("cast")
         elif self.state == MOVING:
             self._move_line(dt)
             if space:                                   # 停止判定線，開始收線
                 self.state, self.rod_t = REELING, 0.0
+                sfx.play("reel")
         elif self.state == REELING:
             self.rod_t += dt
             if self.rod_t * ROD_FPS >= ROD_FRAMES:      # 收線播完才判定
                 self._judge()
         elif self.state == ITEM:
             if space:
+                sfx.play("advance")
                 self._begin_return()
         elif self.state == FAIL:                        # 計時期間忽略空白鍵
             if pygame.time.get_ticks() - self.fail_timer >= FAIL_DISPLAY_MS:
@@ -307,6 +313,7 @@ def play_fishing(screen=None):
     if screen is None:
         screen = pygame.display.set_mode((SCREEN_W, SCREEN_H), pygame.SCALED | pygame.RESIZABLE)
 
+    music.play("lake")
     game = FishingGame()
     canvas = pygame.Surface((SCREEN_W, SCREEN_H)).convert()   # 視窗不是 1920x1080 時才會用到
     clock = pygame.time.Clock()

@@ -3,6 +3,7 @@ import pygame
 from scenes.dialogue_scene import play_dialogue
 from scenes.alchemy_scene import play_alchemy_chapter
 from scenes.fishing_scene import play_fishing
+from scenes import sfx
 
 
 def main():
@@ -18,6 +19,7 @@ def main():
   # 修改後：直接以標準 1920x1080 視窗開啟，保留縮放與視窗化能力
   screen = pygame.display.set_mode((1920, 1080), pygame.SCALED | pygame.RESIZABLE)
   pygame.display.set_caption("Visual Novel Game")
+  sfx.preload()   # 先合成好所有音效，避免第一次播放時卡頓
 
   print("--- 遊戲開始 ---")
   

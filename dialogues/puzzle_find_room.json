@@ -2,6 +2,7 @@
   "dialogue_id": "puzzle_find_room",
   "original_id": "puzzle_find_room",
   "bg": "bg_game_find_room",
+  "bgm": "campus",
   "characters": [
     "short_and_square",
     "TA"
