@@ -17,6 +17,8 @@ from pathlib import Path
 
 import pygame
 
+from scenes import sfx
+
 # ---------------- 路徑 ----------------
 BASE_DIR = Path(__file__).resolve().parent.parent   # your_game_project/
 ASSET_DIR = BASE_DIR / "assets"                     # assets/char, assets/bg, assets/ui
@@ -216,6 +218,8 @@ def play_dialogue(json_path, screen=None, events=None):
     pygame.event.clear()  # 清掉上一個畫面殘留的按鍵事件
 
     for line in scene["lines"]:
+        if line.get("sfx"):                                 # 例如 "sfx": "alarm"，該句出現時播放
+            sfx.play(line["sfx"])
         bg_name = line.get("bg", scene.get("bg"))
         bg = assets.get(bg_name) if bg_name else None
         show_chars = line.get("show_characters", scene.get("show_characters", True))
@@ -266,6 +270,8 @@ def play_dialogue(json_path, screen=None, events=None):
                         next_line = True
 
             if next_line:
+                if line.get("sfx"):                         # 換句時停止該句的音效
+                    sfx.stop(line["sfx"])
                 handler = events.get(line.get("event"))
                 if handler:
                     handler()

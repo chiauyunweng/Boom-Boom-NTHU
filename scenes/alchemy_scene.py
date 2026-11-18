@@ -306,7 +306,6 @@ def run_alchemy(items=None):
                             sfx.play("drop")
                     else:
                         wrong = True
-                        sfx.play("wrong")
                 else:
                     sfx.play("cancel")
                 dragging = None        # 沒放進裝置就自動回到物品欄
@@ -315,7 +314,9 @@ def run_alchemy(items=None):
             # 放錯：扣時間，物品全部退回；只有第一次放錯會播放警報劇情（期間不計時）
             wrong_count += 1
             if wrong_count == 1:
-                play_dialogue("alchemy_wrong_procedure")
+                play_dialogue("alchemy_wrong_procedure")   # 第一句會響警報（JSON 的 "sfx": "alarm"）
+            else:
+                sfx.play("alarm")
                 clock.tick()           # 丟掉劇情期間累積的時間
                 pygame.key.stop_text_input()
                 pygame.event.clear()

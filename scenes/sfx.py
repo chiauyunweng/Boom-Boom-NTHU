@@ -9,12 +9,11 @@
 import array
 import math
 import random
+from pathlib import Path
 
 import pygame
 
-from scenes.dialogue_scene import ASSET_DIR
-
-SFX_DIR = ASSET_DIR / "sfx"
+SFX_DIR = Path(__file__).resolve().parent.parent / "assets" / "sfx"
 VOLUME = 0.5                  # 全部音效的總音量 0~1
 
 # 合成音效：每段為 (波形, 起始頻率, 結束頻率, 長度 ms, 音量)；波形 square / sine / noise / rest
@@ -22,8 +21,7 @@ SYNTH = {
     "pickup":  [("square", 660, 990, 60, 0.25)],                          # 拿起物品
     "cancel":  [("sine", 440, 300, 90, 0.35)],                            # 沒放進裝置、物品退回
     "drop":    [("square", 988, 988, 60, 0.25), ("square", 1319, 1319, 110, 0.25)],  # 放對
-    "wrong":   [("square", 196, 196, 160, 0.3), ("rest", 0, 0, 40, 0),
-                ("square", 147, 147, 320, 0.3)],                          # 放錯
+    "alarm":   [("square", 600, 1100, 400, 0.22), ("square", 1100, 600, 400, 0.22)] * 3,  # 警報聲（放錯）
     "success": [("square", 523, 523, 90, 0.25), ("square", 659, 659, 90, 0.25),
                 ("square", 784, 784, 90, 0.25), ("square", 1047, 1047, 300, 0.25)],  # 完成
     "paper":   [("noise", 0, 0, 130, 0.18)],                              # 打開/關閉說明書
@@ -98,9 +96,17 @@ def _load(name):
 
 
 def play(name):
+    """播放音效；同一個音效若還在播，先停掉再重播（避免重疊）。"""
     if not _ready():
         return
     if name not in _cache:
         _cache[name] = _load(name)
     if _cache[name]:
+        _cache[name].stop()
         _cache[name].play()
+
+
+def stop(name):
+    snd = _cache.get(name)
+    if snd and pygame.mixer.get_init():
+        snd.stop()

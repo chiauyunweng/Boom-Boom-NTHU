@@ -10,7 +10,8 @@
     {
       "speaker": "",
       "speaker_id": null,
-      "text": "（實驗室紅燈閃爍，警報聲突然響起。）"
+      "text": "（實驗室紅燈閃爍，警報聲突然響起。）",
+      "sfx": "alarm"
     },
     {
       "speaker": "矮為方",
