@@ -15,21 +15,37 @@ import sys
 import pygame
 
 from scenes.dialogue_scene import (
-    ASSET_DIR, FONT_ANTIALIAS, SCREEN_H, SCREEN_W, _make_font, _present, play_dialogue,
+    ASSET_DIR, FONT_ANTIALIAS, SCREEN_H, SCREEN_W, _make_font, _present, _wrap, play_dialogue,
 )
 
 # ---------------- 可調整設定 ----------------
 TIME_LIMIT_SEC = 120          # 總時間 2 分鐘
 PENALTY_SEC = 10              # 放錯一次扣 10 秒
 
-# 正確放入順序（TODO：依說明書內容調整）
+# 正確放入順序（漁父的包包用不到）
 CORRECT_ORDER = [
-    "漁父的包包",
     "高姐姐的腳踏車",
-    "DYY的銅板",
-    "學生腐爛的夢想",
     "氫化鋁鋰",
+    "學生腐爛的夢想",
+    "DYY的銅板",
 ]
+
+# 說明書內容（放入順序的謎題）
+MANUAL_TITLE = "實驗裝置使用說明書"
+MANUAL_TEXT = (
+    "本裝置須依下列步驟放入材料，順序錯誤將觸發警報。\n"
+    "\n"
+    "一、能載人在校園裡奔馳、卻總是被拖吊的，最先放入。\n"
+    "二、遇水會劇烈反應的白色粉末，緊接其後。\n"
+    "三、期末過後被丟棄、散發著酸臭味的東西，放在第三。\n"
+    "四、最後，投入一枚印著熟悉面孔的硬幣。\n"
+    "\n"
+    "※ 並非所有物品都需要放入。"
+)
+MANUAL_RECT = pygame.Rect(0, 0, 1100, 720)
+MANUAL_RECT.center = (SCREEN_W // 2, SCREEN_H // 2)
+PAPER_COLOR = (245, 235, 210)
+INK_COLOR = (60, 40, 30)
 
 # 物品名稱 → assets/obj 底下的圖檔
 ITEM_IMAGES = {
@@ -52,6 +68,9 @@ PLACED_SIZE = 90              # 裝置內已放入物品的小圖示
 
 DEVICE_RECT = pygame.Rect(0, 0, 560, 460)
 DEVICE_RECT.center = (SCREEN_W // 2, 600)
+
+MANUAL_ICON_RECT = pygame.Rect(0, 0, 150, 190)    # 裝置右側可點擊的說明書
+MANUAL_ICON_RECT.midleft = (DEVICE_RECT.right + 70, DEVICE_RECT.centery - 20)
 
 TEXT_COLOR = (255, 255, 255)
 HINT_COLOR = (220, 220, 220)
@@ -115,6 +134,81 @@ def _panel(target, rect, fill, border, width=4, radius=18):
     pygame.draw.rect(target, border, rect, width, border_radius=radius)
 
 
+def _draw_manual_icon(target, font, hover):
+    r = MANUAL_ICON_RECT
+    fold = 36
+    pts = [r.topleft, (r.right - fold, r.top), (r.right, r.top + fold), r.bottomright, r.bottomleft]
+    pygame.draw.polygon(target, PAPER_COLOR, pts)
+    pygame.draw.polygon(target, (200, 185, 150),
+                        [(r.right - fold, r.top), (r.right - fold, r.top + fold), (r.right, r.top + fold)])
+    pygame.draw.polygon(target, DEVICE_HOVER if hover else INK_COLOR, pts, 5 if hover else 3)
+    for k in range(5):
+        y = r.top + 60 + k * 24
+        pygame.draw.line(target, (150, 130, 100), (r.left + 20, y), (r.right - 20 - (k % 2) * 30, y), 3)
+    label = font.render("說明書", FONT_ANTIALIAS, DEVICE_HOVER if hover else TEXT_COLOR)
+    target.blit(label, label.get_rect(midtop=(r.centerx, r.bottom + 12)))
+
+
+def _draw_manual(target, title_font, font):
+    """在畫面中央畫出攤開的說明書（含半透明遮罩）。"""
+    shade = pygame.Surface((SCREEN_W, SCREEN_H), pygame.SRCALPHA)
+    shade.fill((0, 0, 0, 170))
+    target.blit(shade, (0, 0))
+    r = MANUAL_RECT
+    pygame.draw.rect(target, PAPER_COLOR, r, border_radius=12)
+    pygame.draw.rect(target, INK_COLOR, r, 6, border_radius=12)
+
+    title = title_font.render(MANUAL_TITLE, FONT_ANTIALIAS, INK_COLOR)
+    target.blit(title, title.get_rect(midtop=(r.centerx, r.top + 50)))
+    pygame.draw.line(target, INK_COLOR, (r.left + 80, r.top + 125), (r.right - 80, r.top + 125), 3)
+
+    y = r.top + 165
+    for ln in _wrap(MANUAL_TEXT, font, r.width - 160):
+        if ln:
+            target.blit(font.render(ln, FONT_ANTIALIAS, INK_COLOR), (r.left + 80, y))
+        y += font.get_linesize() + 14
+
+    hint = font.render("點擊任意處或按空白鍵關閉", FONT_ANTIALIAS, (130, 110, 90))
+    target.blit(hint, hint.get_rect(midbottom=(r.centerx, r.bottom - 30)))
+
+
+def _is_close_event(event):
+    return (
+        (event.type == pygame.MOUSEBUTTONDOWN and event.button == 1)
+        or (event.type == pygame.KEYDOWN
+            and event.key in (pygame.K_SPACE, pygame.K_ESCAPE, pygame.K_RETURN))
+        or (event.type == pygame.TEXTINPUT and event.text == " ")
+    )
+
+
+def show_manual():
+    """獨立顯示說明書（劇情中拿起說明書時用），蓋在目前畫面上，關閉後返回。"""
+    screen = pygame.display.get_surface()
+    backdrop = screen.copy()
+    if backdrop.get_size() != (SCREEN_W, SCREEN_H):
+        backdrop = pygame.Surface((SCREEN_W, SCREEN_H)).convert()
+        backdrop.fill((0, 0, 0))
+    canvas = pygame.Surface((SCREEN_W, SCREEN_H)).convert()
+    title_font, font = _make_font(48), _make_font(32)
+    clock = pygame.time.Clock()
+    pygame.event.clear()
+    while True:
+        clock.tick(60)
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                _quit()
+            if _is_close_event(event):
+                return
+        screen = pygame.display.get_surface()
+        direct = screen.get_size() == (SCREEN_W, SCREEN_H)
+        target = screen if direct else canvas
+        target.blit(backdrop, (0, 0))
+        _draw_manual(target, title_font, font)
+        if not direct:
+            _present(screen, canvas)
+        pygame.display.flip()
+
+
 def run_alchemy(items=None):
     """執行小遊戲。成功回傳 True；時間到回傳 False。
     放錯順序時會自動播放 alchemy_wrong_procedure 並扣時間。"""
@@ -147,6 +241,7 @@ def run_alchemy(items=None):
     mouse = (0, 0)
     penalty_flash_ms = 0        # 顯示「-10 秒」的剩餘時間
     success_ms = None           # 成功後停留一下再結束
+    manual_open = False         # 閱讀說明書時倒數照常進行
 
     pygame.key.stop_text_input()
     pygame.event.clear()
@@ -172,8 +267,14 @@ def run_alchemy(items=None):
                 mouse = _to_logical(event.pos)
             elif success_ms is not None:
                 continue
+            elif manual_open:
+                if _is_close_event(event):
+                    manual_open = False
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 mouse = _to_logical(event.pos)
+                if MANUAL_ICON_RECT.collidepoint(mouse):
+                    manual_open = True
+                    continue
                 for n, r in slots.items():
                     if n not in placed and r.collidepoint(mouse):
                         dragging = n
@@ -250,6 +351,9 @@ def run_alchemy(items=None):
             ok = big_font.render("成功！", FONT_ANTIALIAS, DEVICE_HOVER)
             target.blit(ok, ok.get_rect(center=(DEVICE_RECT.centerx, DEVICE_RECT.centery + 90)))
 
+        _draw_manual_icon(target, font,
+                          not dragging and not manual_open and MANUAL_ICON_RECT.collidepoint(mouse))
+
         # 倒數計時（右上角）
         secs = max(0, (remaining_ms + 999) // 1000)
         t_color = WARN_COLOR if secs <= 20 else TEXT_COLOR
@@ -260,7 +364,7 @@ def run_alchemy(items=None):
             target.blit(pen, pen.get_rect(topright=(SCREEN_W - 50, SLOT_TOP + 64)))
 
         # 操作提示
-        hint = font.render("將物品拖曳到實驗裝置中，依照說明書的順序放入",
+        hint = font.render("將物品拖曳到實驗裝置中，依照說明書的順序放入（點擊說明書可閱讀）",
                            FONT_ANTIALIAS, HINT_COLOR)
         target.blit(hint, hint.get_rect(midbottom=(SCREEN_W // 2, SCREEN_H - 50)))
 
@@ -270,6 +374,10 @@ def run_alchemy(items=None):
             target.blit(ic, ic.get_rect(center=(mouse[0] - drag_offset[0],
                                                 mouse[1] - drag_offset[1])))
 
+        if manual_open:
+            _draw_manual(target, big_font, font)
+            target.blit(timer, timer.get_rect(topright=(SCREEN_W - 50, SLOT_TOP)))  # 閱讀時仍看得到時間
+
         if not direct:
             _present(screen, canvas)
         pygame.display.flip()
@@ -278,7 +386,7 @@ def run_alchemy(items=None):
 def play_alchemy_chapter(items=None):
     """化學館整章：劇情 → 小遊戲 → 依結果播放結局。成功回傳 True。"""
     play_dialogue("alchemy_find_clue")
-    play_dialogue("alchemy_device")
+    play_dialogue("alchemy_device", events={"show_manual": show_manual})
     if run_alchemy(items):
         play_dialogue("alchemy_succeed")
         play_dialogue("ending_succeed")

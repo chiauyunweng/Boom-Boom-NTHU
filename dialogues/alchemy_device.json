@@ -19,7 +19,8 @@
     {
       "speaker": "",
       "speaker_id": null,
-      "text": "（拿起說明書）"
+      "text": "（拿起說明書）",
+      "event": "show_manual"
     },
     {
       "speaker": "矮為方",

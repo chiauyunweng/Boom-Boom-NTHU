@@ -182,7 +182,10 @@ def _present(screen, canvas):
     screen.blit(scaled, ((win_w - size[0]) // 2, (win_h - size[1]) // 2))
 
 
-def play_dialogue(json_path, screen=None):
+def play_dialogue(json_path, screen=None, events=None):
+    """events：{事件名稱: 函式}。某句台詞帶有 "event": "<名稱>" 時，
+    玩家在該句按空白鍵後會先呼叫對應函式（例如顯示說明書），返回後再進下一句。"""
+    events = events or {}
     if not pygame.get_init():
         pygame.init()
     screen = screen or pygame.display.get_surface()
@@ -263,6 +266,12 @@ def play_dialogue(json_path, screen=None):
                         next_line = True
 
             if next_line:
+                handler = events.get(line.get("event"))
+                if handler:
+                    handler()
+                    pygame.key.stop_text_input()
+                    pygame.event.clear()
+                    clock.tick()
                 break
 
             # 視窗剛好 1920x1080（含 pygame.SCALED）直接畫；否則畫在 canvas 再等比縮放
