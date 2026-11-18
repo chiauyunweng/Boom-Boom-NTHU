@@ -51,9 +51,9 @@ INK_COLOR = (60, 40, 30)
 # 物品名稱 → assets/obj 底下的圖檔
 ITEM_IMAGES = {
     "高姐姐的腳踏車": "obj_bicycle.PNG",
-    "DYY的銅板": "IMG_0436.PNG",
+    "DYY的銅板": "obj_coin.PNG",
     "學生腐爛的夢想": "obj_garbage.PNG",
-    "氫化鋁鋰": "IMG_0435.PNG",
+    "氫化鋁鋰": "obj_Li.PNG",
     "漁父的包包": "obj_fisherman_bag.PNG",
 }
 ALL_ITEMS = list(ITEM_IMAGES)
