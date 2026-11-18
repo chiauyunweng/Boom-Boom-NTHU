@@ -3,7 +3,7 @@
 流程（由 play_alchemy_chapter 串起）：
     alchemy_find_clue → alchemy_device → 小遊戲
         成功        → alchemy_succeed → ending_succeed
-        放錯順序    → alchemy_wrong_procedure，倒數 -10 秒，物品全部退回，重來
+        放錯順序    → 倒數 -10 秒，物品全部退回，重來（只有第一次放錯會播 alchemy_wrong_procedure）
         時間到      → alchemy_failed
 
 用法：
@@ -14,6 +14,7 @@ import sys
 
 import pygame
 
+from scenes import sfx
 from scenes.dialogue_scene import (
     ASSET_DIR, FONT_ANTIALIAS, SCREEN_H, SCREEN_W, _make_font, _present, _wrap, play_dialogue,
 )
@@ -192,12 +193,14 @@ def show_manual():
     title_font, font = _make_font(48), _make_font(32)
     clock = pygame.time.Clock()
     pygame.event.clear()
+    sfx.play("paper")
     while True:
         clock.tick(60)
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 _quit()
             if _is_close_event(event):
+                sfx.play("paper")
                 return
         screen = pygame.display.get_surface()
         direct = screen.get_size() == (SCREEN_W, SCREEN_H)
@@ -242,6 +245,8 @@ def run_alchemy(items=None):
     penalty_flash_ms = 0        # 顯示「-10 秒」的剩餘時間
     success_ms = None           # 成功後停留一下再結束
     manual_open = False         # 閱讀說明書時倒數照常進行
+    wrong_count = 0             # 放錯次數
+    last_tick = None            # 最後 10 秒每秒響一次
 
     pygame.key.stop_text_input()
     pygame.event.clear()
@@ -253,7 +258,12 @@ def run_alchemy(items=None):
         penalty_flash_ms = max(0, penalty_flash_ms - dt)
 
         if remaining_ms <= 0:
+            sfx.play("timeout")
             return False
+        secs_left = (remaining_ms + 999) // 1000
+        if success_ms is None and secs_left <= 10 and secs_left != last_tick:
+            last_tick = secs_left
+            sfx.play("tick")
         if success_ms is not None:
             success_ms -= dt
             if success_ms <= 0:
@@ -270,15 +280,18 @@ def run_alchemy(items=None):
             elif manual_open:
                 if _is_close_event(event):
                     manual_open = False
+                    sfx.play("paper")
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 mouse = _to_logical(event.pos)
                 if MANUAL_ICON_RECT.collidepoint(mouse):
                     manual_open = True
+                    sfx.play("paper")
                     continue
                 for n, r in slots.items():
                     if n not in placed and r.collidepoint(mouse):
                         dragging = n
                         drag_offset = (mouse[0] - r.centerx, mouse[1] - r.centery)
+                        sfx.play("pickup")
                         break
             elif event.type == pygame.MOUSEBUTTONUP and event.button == 1 and dragging:
                 mouse = _to_logical(event.pos)
@@ -288,20 +301,29 @@ def run_alchemy(items=None):
                         placed.append(dragging)
                         if len(placed) == len(CORRECT_ORDER):
                             success_ms = 1200
+                            sfx.play("success")
+                        else:
+                            sfx.play("drop")
                     else:
                         wrong = True
+                        sfx.play("wrong")
+                else:
+                    sfx.play("cancel")
                 dragging = None        # 沒放進裝置就自動回到物品欄
 
         if wrong:
-            # 放錯：播放警報劇情（期間不計時），扣時間，物品全部退回
-            play_dialogue("alchemy_wrong_procedure")
+            # 放錯：扣時間，物品全部退回；只有第一次放錯會播放警報劇情（期間不計時）
+            wrong_count += 1
+            if wrong_count == 1:
+                play_dialogue("alchemy_wrong_procedure")
+                clock.tick()           # 丟掉劇情期間累積的時間
+                pygame.key.stop_text_input()
+                pygame.event.clear()
             remaining_ms -= PENALTY_SEC * 1000
             penalty_flash_ms = 1500
             placed.clear()
-            clock.tick()               # 丟掉劇情期間累積的時間
-            pygame.key.stop_text_input()
-            pygame.event.clear()
             if remaining_ms <= 0:
+                sfx.play("timeout")
                 return False
             continue
 

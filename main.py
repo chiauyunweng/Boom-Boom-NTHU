@@ -38,7 +38,7 @@ def main():
   play_dialogue("dialogues/fishing_quit.json")
 
   # 化學館 + 結局：find_clue → device → 拖曳解謎
-  #   成功 → alchemy_succeed → ending_succeed；放錯 → alchemy_wrong_procedure 並扣 10 秒；時間到 → alchemy_failed
+  #   成功 → alchemy_succeed → ending_succeed；放錯 → 扣 10 秒（第一次另播 alchemy_wrong_procedure）；時間到 → alchemy_failed
   play_alchemy_chapter([item["name"] for item in inventory])
 
   print("--- 遊戲結束 ---")
