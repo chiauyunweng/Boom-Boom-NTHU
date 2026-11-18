@@ -1,7 +1,7 @@
 {
   "dialogue_id": "fishing_quit",
   "original_id": "fishing_object_contexts",
-  "bg": null,
+  "bg": "bg_dlg_go_fishing",
   "characters": [
     "short_and_square"
   ],

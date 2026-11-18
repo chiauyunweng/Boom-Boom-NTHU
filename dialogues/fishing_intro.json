@@ -1,7 +1,7 @@
 {
   "dialogue_id": "fishing_intro",
   "original_id": "go_fishing",
-  "bg": null,
+  "bg": "bg_dlg_go_fishing",
   "characters": [
     "short_and_square"
   ],
@@ -19,32 +19,56 @@
     {
       "speaker": "",
       "speaker_id": null,
-      "text": "（兩隻狗突然跑了過來。）"
+      "text": "（兩隻狗突然跑了過來。）",
+      "characters": [
+        "short_and_square",
+        "steak"
+      ]
     },
     {
       "speaker": "牛排",
-      "speaker_id": null,
-      "text": "汪汪！成功湖嗎？"
+      "speaker_id": "steak",
+      "text": "汪汪！成功湖嗎？",
+      "characters": [
+        "short_and_square",
+        "steak"
+      ]
     },
     {
       "speaker": "巧巧",
-      "speaker_id": null,
-      "text": "汪！找我們就對了！我們可是清大在地狗！"
+      "speaker_id": "choco",
+      "text": "汪！找我們就對了！我們可是清大在地狗！",
+      "characters": [
+        "short_and_square",
+        "choco"
+      ]
     },
     {
       "speaker": "",
       "speaker_id": null,
-      "text": "（巧巧和牛排帶著矮為方抵達了成功湖。）"
+      "text": "（巧巧和牛排帶著矮為方抵達了成功湖。）",
+      "characters": [
+        "short_and_square",
+        "choco"
+      ]
     },
     {
       "speaker": "牛排",
-      "speaker_id": null,
-      "text": "到了！接下來就靠你自己了！"
+      "speaker_id": "steak",
+      "text": "到了！接下來就靠你自己了！",
+      "characters": [
+        "short_and_square",
+        "steak"
+      ]
     },
     {
       "speaker": "巧巧",
-      "speaker_id": null,
-      "text": "祝你好運！汪！"
+      "speaker_id": "choco",
+      "text": "祝你好運！汪！",
+      "characters": [
+        "short_and_square",
+        "choco"
+      ]
     },
     {
       "speaker": "矮為方",

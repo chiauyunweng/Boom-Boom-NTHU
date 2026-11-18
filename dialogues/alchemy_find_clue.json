@@ -1,7 +1,7 @@
 {
   "dialogue_id": "alchemy_find_clue",
   "original_id": "go_alchemy_1",
-  "bg": null,
+  "bg": "bg_dlg_go_alchemy",
   "characters": [
     "short_and_square"
   ],

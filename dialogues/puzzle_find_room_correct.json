@@ -1,7 +1,7 @@
 {
   "dialogue_id": "puzzle_find_room_correct",
   "original_id": "puzzle_find_room_correct",
-  "bg": null,
+  "bg": "bg_game_find_room",
   "characters": [
     "short_and_square"
   ],

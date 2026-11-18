@@ -30,22 +30,34 @@
     {
       "speaker": "矮為方",
       "speaker_id": "short_and_square",
-      "text": "我只知道……我要把清華大學「炸了」。"
+      "text": "我只知道……我要把清華大學「炸了」。",
+      "states": {
+        "tall_and_round": "frown"
+      }
     },
     {
       "speaker": "",
       "speaker_id": null,
-      "text": "(空氣陷入了沉默)"
+      "text": "(空氣陷入了沉默)",
+      "states": {
+        "tall_and_round": "frown"
+      }
     },
     {
       "speaker": "高為元",
       "speaker_id": "tall_and_round",
-      "text": "(現在驅之別院還來得及嗎？)"
+      "text": "(現在驅之別院還來得及嗎？)",
+      "states": {
+        "tall_and_round": "frown"
+      }
     },
     {
       "speaker": "高為元",
       "speaker_id": "tall_and_round",
-      "text": "(看來只能這樣了……)"
+      "text": "(看來只能這樣了……)",
+      "states": {
+        "tall_and_round": "frown"
+      }
     },
     {
       "speaker": "高為元",
@@ -117,7 +129,7 @@
     {
       "speaker": "",
       "speaker_id": null,
-      "text": "(一張寫著「上機考見(⁠･⁠–⁠･⁠)⁠ ⁠⁠\\(⁠･⁠◡⁠･⁠)⁠/(⁠･⁠–⁠･⁠)⁠ ⁠⁠\\(⁠･⁠◡⁠･⁠)⁠/」的紙條⋯⋯)",
+      "text": "(一張寫著「上機考見(･–･) \\(･◡･)/(･–･) \\(･◡･)/」的紙條……)",
       "characters": [
         "short_and_square"
       ],
