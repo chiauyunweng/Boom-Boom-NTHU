@@ -1,23 +1,18 @@
 {
   "dialogue_id": "puzzle_fail",
   "original_id": "puzzle_fail",
-  "note": "（第一關重試超過五次觸發，觸發後遊戲重新開始）",
-  "bg": null,
+  "note": "（找教室或解密碼超時、或密碼錯誤達五次時觸發，觸發後回到找教室階段重來）",
+  "bg": "bg_game_find_room",
   "bgm": "none",
   "characters": [
     "short_and_square"
   ],
   "lines": [
     {
-      "speaker": "",
-      "speaker_id": null,
-      "text": "(TLE)",
-      "sfx": "fail_jingle"
-    },
-    {
       "speaker": "矮為方",
       "speaker_id": "short_and_square",
-      "text": "……我就知道資工系不好混。"
+      "text": "……我就知道資工系不好混。",
+      "sfx": "fail_jingle"
     }
   ]
 }

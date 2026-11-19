@@ -1,8 +1,8 @@
 {
   "dialogue_id": "puzzle_wrong",
   "original_id": "puzzle_wrong",
-  "note": "提交的座位選擇錯誤、文件解謎提交錯誤答案時觸發",
-  "bg": null,
+  "note": "文件密碼輸入錯誤時觸發（{remaining} 會被換成剩餘嘗試次數）",
+  "bg": "bg_computer",
   "characters": [
     "short_and_square"
   ],
@@ -10,7 +10,7 @@
     {
       "speaker": "矮為方",
       "speaker_id": "short_and_square",
-      "text": "好像不太對......",
+      "text": "好像不太對......（還剩 {remaining} 次機會）",
       "sfx": "buzz"
     }
   ]

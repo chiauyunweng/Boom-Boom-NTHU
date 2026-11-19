@@ -184,10 +184,18 @@ def _present(screen, canvas):
     screen.blit(scaled, ((win_w - size[0]) // 2, (win_h - size[1]) // 2))
 
 
-def play_dialogue(json_path, screen=None, events=None):
+def _fill(text, variables):
+    """把台詞中的 {名稱} 換成 variables 內的值（例如 {remaining}）。"""
+    for k, v in variables.items():
+        text = text.replace("{" + k + "}", str(v))
+    return text
+
+
+def play_dialogue(json_path, screen=None, events=None, variables=None):
     """events：{事件名稱: 函式}。某句台詞帶有 "event": "<名稱>" 時，
     玩家在該句按空白鍵後會先呼叫對應函式（例如顯示說明書），返回後再進下一句。"""
     events = events or {}
+    variables = variables or {}
     if not pygame.get_init():
         pygame.init()
     screen = screen or pygame.display.get_surface()
@@ -247,7 +255,7 @@ def play_dialogue(json_path, screen=None, events=None):
         name = line.get("speaker", "") or ""
         name_surf = (speaker_font.render(name, FONT_ANTIALIAS, SPEAKER_COLOR)
                      if name else None)
-        wrapped = _wrap(_sanitize(line.get("text", ""), text_font), text_font, text_w)
+        wrapped = _wrap(_sanitize(_fill(line.get("text", ""), variables), text_font), text_font, text_w)
         total = sum(len(l) for l in wrapped)
 
         elapsed_ms = 0
