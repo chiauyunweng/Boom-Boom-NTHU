@@ -47,11 +47,12 @@ TEXT_GAP_LEFT = 40            # 文字最左端與矮為方立繪「非透明部
 SPEAKER_Y_OFFSET = 40         # speaker 名字距對話框上緣
 TEXT_Y_OFFSET = 130           # 內文第一行距對話框上緣
 
-SHOW_HINT = True              # 是否顯示右上角的操作提示
+SHOW_HINT = True              # 是否顯示右下角的操作提示
 HINT_TEXT = "按 SPACE、點擊滑鼠或觸控板繼續"
 HINT_SIZE = 32
 HINT_COLOR = (190, 190, 190)
-HINT_MARGIN_RIGHT = 40        # 提示文字右緣距畫面右緣；高度與 speaker 名字同一列
+HINT_MARGIN_RIGHT = 60        # 提示文字右緣距畫面（＝對話框）右緣的內邊距
+HINT_MARGIN_BOTTOM = 40       # 提示文字下緣距畫面（＝對話框）下緣的內邊距；提示固定在對話框右下角
 
 FRONT_CHAR = "short_and_square"                    # 位於對話框上方圖層的角色（矮為方）
 DEFAULT_CHARS = ["short_and_square", "tall_and_round"]
@@ -240,7 +241,7 @@ def _apply_vars(text, variables):
     return text
 
 
-def play_dialogue(json_path, screen=None, events=None, variables=None):
+def play_dialogue(json_path, screen=None, events=None, variables=None, bg_override=None):
     """播放一段對話 JSON。
     events：{事件名: 函式}。JSON 某句寫 "event": "名稱"（或 ["a", "b"]），
             玩家讀完該句、按下 SPACE 後會先呼叫該函式（例如彈出紙條），再接下一句。
@@ -286,7 +287,7 @@ def play_dialogue(json_path, screen=None, events=None, variables=None):
             music.play(line["bgm"])
         for sfx_name in _as_list(line.get("sfx")):
             sfx.play(sfx_name)
-        bg_name = line.get("bg", scene.get("bg"))
+        bg_name = bg_override or line.get("bg", scene.get("bg"))
         bg = assets.get(bg_name) if bg_name else None
         show_chars = line.get("show_characters", scene.get("show_characters", True))
         char_ids = line.get("characters", scene.get("characters", DEFAULT_CHARS))
@@ -364,7 +365,7 @@ def play_dialogue(json_path, screen=None, events=None, variables=None):
 
             if hint_surf:
                 target.blit(hint_surf, hint_surf.get_rect(
-                    midright=(SCREEN_W - HINT_MARGIN_RIGHT, box_y + SPEAKER_Y_OFFSET + 20)))
+                    bottomright=(SCREEN_W - HINT_MARGIN_RIGHT, SCREEN_H - HINT_MARGIN_BOTTOM)))
             if name_surf:
                 target.blit(name_surf, ((SCREEN_W - name_surf.get_width()) // 2,
                                         box_y + SPEAKER_Y_OFFSET))

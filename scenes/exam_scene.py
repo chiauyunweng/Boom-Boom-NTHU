@@ -41,9 +41,22 @@ FOLDER_IMG = "obj_idle_folder.png"       # 還沒有圖檔時會自動用程式�
 ROWS, COLS = 6, 8
 CLASSROOMS = [
     {"name": "教室一", "taken": {(1, 3), (2, 6), (3, 1), (4, 7), (5, 4)}, "correct": None},
-    {"name": "教室二", "taken": {(1, 5), (2, 2), (3, 7), (4, 3), (6, 1)}, "correct": None},
+    {"name": "教室二", "taken": {(1, 5), (2, 2), (3, 8), (4, 3), (6, 1)}, "correct": None},
     {"name": "教室三", "taken": {(1, 2), (2, 5), (3, 7), (5, 3), (6, 8)}, "correct": (4, 1)},
 ]
+
+# 座位規則文件：內容之後在這裡填入（\n 換行）
+RULES_TITLE = "座位規則"
+RULES_TEXT = (
+    "為避免同學們上機考作弊，請依照以下規則入座。\n"
+    "\n"
+    "一、同一行不能有人。\n"
+    "二、同一列不能有人。\n"
+    "三、對角線也不能坐人。\n"
+    "四、最後，需要計算紙可以跟助教拿喔\\(･◡･)/。"
+)
+RULES_BTN_LABEL = "座位規則"
+RULES_BTN = pygame.Rect(20, SCREEN_H - 110, 180, 80)          # 找教室畫面左下角（座位表彈窗外側）
 
 # 獲得的「文件」道具：內容之後在這裡填入
 DOC_NAME = "文件"
@@ -326,6 +339,7 @@ def run_find_room():
 
     remaining_ms = FIND_ROOM_SEC * 1000
     open_room = None
+    rules_open = False
     toast, toast_ms = "", 0
     mouse = (0, 0)
     tick = {}
@@ -349,6 +363,15 @@ def run_find_room():
                 _quit()
             elif event.type == pygame.MOUSEMOTION:
                 mouse = _to_logical(event.pos)
+            elif rules_open:                         # 規則視窗開著：只處理關閉，倒數與座位表狀態都照舊
+                if _is_close_event(event):
+                    rules_open = False
+                    sfx.play("paper")
+            elif (event.type == pygame.MOUSEBUTTONDOWN and event.button == 1
+                  and RULES_BTN.collidepoint(_to_logical(event.pos))):
+                mouse = _to_logical(event.pos)
+                rules_open = True
+                sfx.play("paper")
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE and open_room is not None:
                 open_room = None
                 sfx.play("cancel")
@@ -383,7 +406,7 @@ def run_find_room():
         target = frame.begin()
         target.blit(bg, (0, 0))
         for i, d in enumerate(doors):
-            hov = open_room is None and d.collidepoint(mouse)
+            hov = open_room is None and not rules_open and d.collidepoint(mouse)
             img = door_sel if hov else door_idle
             if img is not None:
                 target.blit(img, img.get_rect(center=d.center) if hov else d.topleft)
@@ -400,12 +423,19 @@ def run_find_room():
 
         if open_room is not None:
             _draw_seating(target, fonts, open_room, mouse)
+        hov_rules = RULES_BTN.collidepoint(mouse) and not rules_open
+        _panel(target, RULES_BTN, (245, 232, 196, 245), GOLD if hov_rules else INK, 5, 14)
+        rt = fonts["small"].render(RULES_BTN_LABEL, FONT_ANTIALIAS, INK)
+        target.blit(rt, rt.get_rect(center=RULES_BTN.center))
         _draw_timer(target, fonts["big"], remaining_ms, "找教室")
         if toast_ms:
             t = fonts["big"].render(toast, FONT_ANTIALIAS, WARN)
             tr = t.get_rect(center=(SCREEN_W // 2, SCREEN_H - 70))
             _panel(target, tr.inflate(50, 24), (0, 0, 0, 210), WARN, 3, 12)
             target.blit(t, tr)
+        if rules_open:
+            _draw_doc_view(target, fonts, RULES_TITLE, RULES_TEXT, "點擊任意處或按空白鍵關閉")
+            _draw_timer(target, fonts["big"], remaining_ms, "找教室")
         frame.end()
 
 
@@ -612,6 +642,12 @@ def _draw_doc_view(target, fonts, title, text, footer):
     r.center = (SCREEN_W // 2, SCREEN_H // 2)
     pygame.draw.rect(target, PAPER, r, border_radius=12)
     pygame.draw.rect(target, INK, r, 6, border_radius=12)
+    xr = pygame.Rect(0, 0, 56, 56)                       # 右上角關閉按鈕（點視窗任意處也可關閉）
+    xr.topright = (r.right - 20, r.top + 20)
+    pygame.draw.rect(target, (170, 60, 60), xr, border_radius=10)
+    xc = xr.inflate(-24, -24)
+    pygame.draw.line(target, TEXT, xc.topleft, xc.bottomright, 5)
+    pygame.draw.line(target, TEXT, xc.topright, xc.bottomleft, 5)
     tt = fonts["big"].render(title, FONT_ANTIALIAS, INK)
     target.blit(tt, tt.get_rect(midtop=(r.centerx, r.top + 50)))
     pygame.draw.line(target, INK, (r.left + 80, r.top + 125), (r.right - 80, r.top + 125), 3)
@@ -829,19 +865,63 @@ def show_item_acquired():
 
 
 # ---------------- 整章 ----------------
-def play_exam_chapter():
-    """機考整章：重複「找教室 → 紙條 → 密碼」直到成功。回傳獲得的道具 dict。"""
+def _wait_retry(bg, label):
+    """失敗對話結束後：顯示背景與一顆按鈕，等玩家點擊（或按 Enter / 空白）才返回。"""
+    frame = _Frame()
+    clock = pygame.time.Clock()
+    font = _make_font(48)
+    btn = pygame.Rect(0, 0, 520, 130)
+    btn.center = (SCREEN_W // 2, SCREEN_H // 2)
+    mouse = (0, 0)
+    music.play("none")
+    pygame.key.stop_text_input()
+    pygame.event.clear()
     while True:
+        clock.tick(60)
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                _quit()
+            elif event.type == pygame.MOUSEMOTION:
+                mouse = _to_logical(event.pos)
+            elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                if btn.collidepoint(_to_logical(event.pos)):
+                    sfx.play("pickup")
+                    return
+            elif event.type == pygame.KEYDOWN and event.key in (pygame.K_RETURN, pygame.K_SPACE):
+                sfx.play("pickup")
+                return
+        target = frame.begin()
+        target.blit(bg, (0, 0))
+        shade = pygame.Surface((SCREEN_W, SCREEN_H), pygame.SRCALPHA)
+        shade.fill((0, 0, 0, 120))
+        target.blit(shade, (0, 0))
+        hov = btn.collidepoint(mouse)
+        _panel(target, btn, (60, 90, 160, 245) if not hov else (90, 125, 205, 250),
+               GOLD if hov else TEXT, 6, 24)
+        t = font.render(label, FONT_ANTIALIAS, TEXT)
+        target.blit(t, t.get_rect(center=btn.center))
+        frame.end()
+
+
+def play_exam_chapter():
+    """機考整章：找教室（失敗 → 按鈕重來）→ 紙條 → 密碼（失敗 → 按鈕回到拿到紙條處）。
+    回傳獲得的道具 dict。"""
+    while True:
+        # ---- 階段一：找教室 ----
         play_dialogue("puzzle_find_room")
         if not run_find_room():
-            play_dialogue("puzzle_fail")                 # 找教室超時 → 重置本關
+            play_dialogue("puzzle_fail", bg_override="bg_game_find_room")
+            _wait_retry(_load_bg(BG_FIND_ROOM), "重新找教室")
             continue
-        play_dialogue("puzzle_find_room_correct", events={"show_note": show_note})
-        if run_computer():
-            play_dialogue("puzzle_succeed")
-            show_item_acquired()
-            return {"name": DOC_NAME, "text": DOC_TEXT}
-        play_dialogue("puzzle_fail")                     # 密碼錯 5 次或超時 → 回到找教室
+        # ---- 階段三：紙條 + 密碼；失敗只回到拿到紙條處 ----
+        while True:
+            play_dialogue("puzzle_find_room_correct", events={"show_note": show_note})
+            if run_computer():
+                play_dialogue("puzzle_succeed")
+                show_item_acquired()
+                return {"name": DOC_NAME, "text": DOC_TEXT}
+            play_dialogue("puzzle_fail", bg_override="bg_computer")       # 密碼錯 5 次或超時
+            _wait_retry(_load_bg(BG_COMPUTER), "重新解謎")
 
 
 if __name__ == "__main__":
