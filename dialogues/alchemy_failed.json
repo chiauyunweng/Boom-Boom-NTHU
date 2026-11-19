@@ -1,7 +1,7 @@
 {
   "dialogue_id": "alchemy_failed",
   "original_id": "alchemy_failed",
-  "bg": null,
+  "bg": "bg_game_find_room",
   "bgm": "lab",
   "characters": [
     "short_and_square",

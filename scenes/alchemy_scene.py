@@ -10,6 +10,7 @@
     from scenes.alchemy_scene import play_alchemy_chapter, run_alchemy
     play_alchemy_chapter(caught_items)   # caught_items：釣魚關卡得到的物品名稱 list
 """
+import math
 import sys
 
 import pygame
@@ -67,6 +68,9 @@ ICON_PAD = 14                 # 圖示與格子邊緣的距離
 DRAG_SIZE = 200               # 拖曳中的物品顯示大小
 PLACED_SIZE = 90              # 裝置內已放入物品的小圖示
 
+POT_IMAGE = "obj_poison_pot.png"   # 實驗裝置＝毒藥鍋（assets/obj 或 assets/ui）
+POT_SIZE = 384                     # 64 格像素畫的整數倍（6 倍），縮放才不會糊
+
 DEVICE_RECT = pygame.Rect(0, 0, 560, 460)
 DEVICE_RECT.center = (SCREEN_W // 2, 600)
 
@@ -103,6 +107,17 @@ def _load_icon(name, size):
     scale = min(size / img.get_width(), size / img.get_height())
     return pygame.transform.smoothscale(
         img, (max(1, int(img.get_width() * scale)), max(1, int(img.get_height() * scale))))
+
+
+def _load_pot():
+    """載入毒藥鍋像素圖（最近鄰縮放，保持像素風）；找不到就回傳 None，改畫原本的方框。"""
+    for folder in ("obj", "ui"):
+        path = ASSET_DIR / folder / POT_IMAGE
+        if path.exists():
+            img = pygame.image.load(str(path)).convert_alpha()
+            return pygame.transform.scale(img, (POT_SIZE, POT_SIZE))
+    print(f"[alchemy_scene] 找不到毒藥鍋圖：{ASSET_DIR / 'obj' / POT_IMAGE}（改用方框裝置）")
+    return None
 
 
 def _load_bg():
@@ -230,6 +245,7 @@ def run_alchemy(items=None):
     icons = {n: _load_icon(n, SLOT_SIZE - 2 * ICON_PAD) for n in items}
     drag_icons = {n: _load_icon(n, DRAG_SIZE) for n in items}
     placed_icons = {n: _load_icon(n, PLACED_SIZE) for n in items}
+    pot = _load_pot()
 
     # 上方物品欄：置中排成一排
     row_w = len(items) * SLOT_SIZE + (len(items) - 1) * SLOT_GAP
@@ -356,25 +372,38 @@ def run_alchemy(items=None):
 
         # 實驗裝置
         over_device = dragging and DEVICE_RECT.collidepoint(mouse)
-        _panel(target, DEVICE_RECT, DEVICE_COLOR,
-               DEVICE_HOVER if over_device else DEVICE_BORDER, 6, 28)
-        title = big_font.render("實驗裝置", FONT_ANTIALIAS, TEXT_COLOR)
-        target.blit(title, title.get_rect(midtop=(DEVICE_RECT.centerx, DEVICE_RECT.top + 30)))
         progress = font.render(f"已放入 {len(placed)} / {len(CORRECT_ORDER)}",
                                FONT_ANTIALIAS, HINT_COLOR)
-        target.blit(progress, progress.get_rect(
-            midbottom=(DEVICE_RECT.centerx, DEVICE_RECT.bottom - 30)))
-        if placed:
-            gap = 12
-            w = len(placed) * PLACED_SIZE + (len(placed) - 1) * gap
-            x = DEVICE_RECT.centerx - w // 2
-            for n in placed:
-                ic = placed_icons[n]
-                target.blit(ic, ic.get_rect(center=(x + PLACED_SIZE // 2, DEVICE_RECT.centery)))
-                x += PLACED_SIZE + gap
+        title = big_font.render("實驗裝置", FONT_ANTIALIAS, TEXT_COLOR)
+        gap = 12
+        w = len(placed) * PLACED_SIZE + (len(placed) - 1) * gap
+        if pot is None:                                       # 沒有鍋子圖：原本的方框裝置
+            _panel(target, DEVICE_RECT, DEVICE_COLOR,
+                   DEVICE_HOVER if over_device else DEVICE_BORDER, 6, 28)
+            target.blit(title, title.get_rect(midtop=(DEVICE_RECT.centerx, DEVICE_RECT.top + 30)))
+            target.blit(progress, progress.get_rect(
+                midbottom=(DEVICE_RECT.centerx, DEVICE_RECT.bottom - 30)))
+            icon_y = DEVICE_RECT.centery
+            ok_pos = (DEVICE_RECT.centerx, DEVICE_RECT.centery + 90)
+        else:                                                 # 毒藥鍋：拖到框內放開即放入
+            _panel(target, DEVICE_RECT, (30, 40, 70, 90),
+                   DEVICE_HOVER if over_device else DEVICE_BORDER, 6 if over_device else 2, 28)
+            bob = int(5 * math.sin(pygame.time.get_ticks() / 350))   # 鍋子輕輕上下晃動
+            target.blit(pot, pot.get_rect(center=(DEVICE_RECT.centerx, DEVICE_RECT.centery + bob)))
+            target.blit(title, title.get_rect(midbottom=(DEVICE_RECT.centerx, DEVICE_RECT.top - 10)))
+            target.blit(progress, progress.get_rect(midtop=(DEVICE_RECT.centerx, DEVICE_RECT.bottom + 12)))
+            icon_y = DEVICE_RECT.bottom + 105
+            ok_pos = (DEVICE_RECT.centerx, DEVICE_RECT.top - 70)
+        x = DEVICE_RECT.centerx - w // 2
+        for n in placed:
+            ic = placed_icons[n]
+            target.blit(ic, ic.get_rect(center=(x + PLACED_SIZE // 2, icon_y)))
+            x += PLACED_SIZE + gap
         if success_ms is not None:
             ok = big_font.render("成功！", FONT_ANTIALIAS, DEVICE_HOVER)
-            target.blit(ok, ok.get_rect(center=(DEVICE_RECT.centerx, DEVICE_RECT.centery + 90)))
+            okr = ok.get_rect(center=ok_pos)
+            _panel(target, okr.inflate(40, 16), (0, 0, 0, 190), DEVICE_HOVER, 3, 10)
+            target.blit(ok, okr)
 
         _draw_manual_icon(target, font,
                           not dragging and not manual_open and MANUAL_ICON_RECT.collidepoint(mouse))

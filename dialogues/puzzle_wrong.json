@@ -2,7 +2,7 @@
   "dialogue_id": "puzzle_wrong",
   "original_id": "puzzle_wrong",
   "note": "文件密碼輸入錯誤時觸發（{remaining} 會被換成剩餘嘗試次數）",
-  "bg": "bg_computer",
+  "bg": "bg_game_find_room",
   "characters": [
     "short_and_square"
   ],

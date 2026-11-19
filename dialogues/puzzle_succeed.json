@@ -1,7 +1,7 @@
 {
   "dialogue_id": "puzzle_succeed",
   "original_id": "puzzle_succeed",
-  "bg": "bg_computer",
+  "bg": "bg_game_find_room",
   "bgm": "campus",
   "characters": [
     "short_and_square"

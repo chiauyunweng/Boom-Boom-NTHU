@@ -47,6 +47,12 @@ TEXT_GAP_LEFT = 40            # 文字最左端與矮為方立繪「非透明部
 SPEAKER_Y_OFFSET = 40         # speaker 名字距對話框上緣
 TEXT_Y_OFFSET = 130           # 內文第一行距對話框上緣
 
+SHOW_HINT = True              # 是否顯示右上角的操作提示
+HINT_TEXT = "按 SPACE、點擊滑鼠或觸控板繼續"
+HINT_SIZE = 32
+HINT_COLOR = (190, 190, 190)
+HINT_MARGIN_RIGHT = 40        # 提示文字右緣距畫面右緣；高度與 speaker 名字同一列
+
 FRONT_CHAR = "short_and_square"                    # 位於對話框上方圖層的角色（矮為方）
 DEFAULT_CHARS = ["short_and_square", "tall_and_round"]
 # --------------------------------------------
@@ -129,6 +135,14 @@ class Assets:
             if not optional:
                 print(f"[dialogue_scene] 找不到素材：{path}")
             img = None
+        if img and prefix == "bg":
+            # 背景一律當不透明圖：convert() 會丟掉 alpha，透明處改顯示底下的色彩
+            # （和上機考 exam_scene 的做法一致，也比 convert_alpha 的繪製快）
+            w, h = img.get_size()
+            if pygame.mask.from_surface(img, 254).count() < w * h:
+                print(f"[dialogue_scene] 注意：{name}.png 含有透明像素，已當成不透明背景顯示；"
+                      f"若畫面仍不對，請檢查這張圖的透明區域")
+            img = img.convert()
         if img and prefix in ("char", "bg") and img.get_size() != (SCREEN_W, SCREEN_H):
             print(f"[dialogue_scene] 注意：{name}.png 尺寸是 {img.get_size()}，"
                   f"不是 {SCREEN_W}x{SCREEN_H}，會因此被裁切或偏移")
@@ -137,7 +151,7 @@ class Assets:
 
     def char(self, char_id, state):
         # 找不到該表情就退回 idle
-        img = self.get(f"char_{char_id}_{state}", optional=(state != "idle"))
+        img = self.get(f"char_{char_id}_{state}")   # 找不到會印出完整路徑
         return img or self.get(f"char_{char_id}_idle")
 
 
@@ -184,18 +198,55 @@ def _present(screen, canvas):
     screen.blit(scaled, ((win_w - size[0]) // 2, (win_h - size[1]) // 2))
 
 
-def _fill(text, variables):
-    """把台詞中的 {名稱} 換成 variables 內的值（例如 {remaining}）。"""
-    for k, v in variables.items():
-        text = text.replace("{" + k + "}", str(v))
+def _as_list(value):
+    if not value:
+        return []
+    return [value] if isinstance(value, str) else list(value)
+
+
+_warned_props = set()
+
+
+def _prop_sprite(assets, spec):
+    """props 的一個項目 → (圖, 左上角座標)；找不到圖回傳 None。
+    字串："obj_bomb"，當成整張 1920x1080 素材貼在 (0,0)（和背景、立繪一樣）。
+    dict ：{"image": "obj_bomb", "center": [x, y]} 或 {"image": ..., "pos": [x, y]}，
+           可加 "scale": 倍率（小圖用）。圖檔依前綴找資料夾，例如 obj_bomb → assets/obj/obj_bomb.png。"""
+    if isinstance(spec, str):
+        spec = {"image": spec}
+    img = assets.get(spec["image"])
+    if img is None:
+        return None
+    scale = spec.get("scale")
+    if scale and scale != 1:
+        img = pygame.transform.smoothscale(
+            img, (max(1, int(img.get_width() * scale)), max(1, int(img.get_height() * scale))))
+    if "center" in spec:
+        pos = img.get_rect(center=tuple(spec["center"])).topleft
+    else:
+        pos = tuple(spec.get("pos", (0, 0)))
+        if (pos == (0, 0) and img.get_size() != (SCREEN_W, SCREEN_H)
+                and spec["image"] not in _warned_props):
+            _warned_props.add(spec["image"])
+            print(f"[dialogue_scene] 注意：{spec['image']}.png 尺寸是 {img.get_size()}，會貼在左上角 (0,0)；"
+                  f'若是小圖，請在 JSON 寫 {{"image": "{spec["image"]}", "center": [x, y]}}')
+    return img, pos
+
+
+def _apply_vars(text, variables):
+    """把文字裡的 {名稱} 換成 variables 內的值（沒給的 {xxx} 原樣保留）。"""
+    for key, val in (variables or {}).items():
+        text = text.replace("{" + key + "}", str(val))
     return text
 
 
 def play_dialogue(json_path, screen=None, events=None, variables=None):
-    """events：{事件名稱: 函式}。某句台詞帶有 "event": "<名稱>" 時，
-    玩家在該句按空白鍵後會先呼叫對應函式（例如顯示說明書），返回後再進下一句。"""
-    events = events or {}
-    variables = variables or {}
+    """播放一段對話 JSON。
+    events：{事件名: 函式}。JSON 某句寫 "event": "名稱"（或 ["a", "b"]），
+            玩家讀完該句、按下 SPACE 後會先呼叫該函式（例如彈出紙條），再接下一句。
+    variables：{名稱: 值}。文字裡的 {名稱} 會被換掉，例如 "還剩 {remaining} 次機會"。
+    JSON 每句還可寫 "sfx": "名稱"（該句開始時播音效）、"bgm": "名稱"（換背景音樂，"none" = 停止）；
+    整段 JSON 最上層也可寫 "bgm"，在開頭生效。"""
     if not pygame.get_init():
         pygame.init()
     screen = screen or pygame.display.get_surface()
@@ -206,12 +257,17 @@ def play_dialogue(json_path, screen=None, events=None, variables=None):
     with open(_resolve_dialogue(json_path), "r", encoding="utf-8") as f:
         scene = json.load(f)
 
+    if scene.get("bgm"):
+        music.play(scene["bgm"])
+
     assets = Assets()
     box = assets.get("ui_dialogue_box")
     box_y = SCREEN_H - box.get_height() if box else SCREEN_H  # 底部切齊畫面底部
 
     speaker_font = _make_font(SPEAKER_SIZE)
     text_font = _make_font(TEXT_SIZE)
+    hint_surf = (_make_font(HINT_SIZE).render(HINT_TEXT, FONT_ANTIALIAS, HINT_COLOR)
+                 if SHOW_HINT else None)
 
     text_left = _front_char_right_edge(assets) + TEXT_GAP_LEFT
     text_w = SCREEN_W - 2 * text_left          # 文字區塊左右對稱 => 區塊置中，文字靠左
@@ -225,12 +281,11 @@ def play_dialogue(json_path, screen=None, events=None, variables=None):
     pygame.key.stop_text_input()
     pygame.event.clear()  # 清掉上一個畫面殘留的按鍵事件
 
-    music.play(scene.get("bgm"))                            # 整段的背景音樂；沒寫就延續前一首
-
     for line in scene["lines"]:
-        music.play(line.get("bgm"))                         # 單句切換背景音樂（"none" = 停止）
-        if line.get("sfx"):                                 # 例如 "sfx": "alarm"，該句出現時播放
-            sfx.play(line["sfx"])
+        if line.get("bgm"):
+            music.play(line["bgm"])
+        for sfx_name in _as_list(line.get("sfx")):
+            sfx.play(sfx_name)
         bg_name = line.get("bg", scene.get("bg"))
         bg = assets.get(bg_name) if bg_name else None
         show_chars = line.get("show_characters", scene.get("show_characters", True))
@@ -246,16 +301,17 @@ def play_dialogue(json_path, screen=None, events=None, variables=None):
                 state = overrides.get(cid) or ("talk" if cid == speaker_id else "idle")
                 img = assets.char(cid, state)
                 if img:
-                    (front_sprites if cid == FRONT_CHAR else back_sprites).append(img)
+                    (front_sprites if cid == FRONT_CHAR else back_sprites).append((img, (0, 0)))
         for p in props:
-            img = assets.get(p)
-            if img:
-                back_sprites.append(img)
+            sprite = _prop_sprite(assets, p)
+            if sprite:
+                back_sprites.append(sprite)
 
-        name = line.get("speaker", "") or ""
+        name = _apply_vars(line.get("speaker", "") or "", variables)
         name_surf = (speaker_font.render(name, FONT_ANTIALIAS, SPEAKER_COLOR)
                      if name else None)
-        wrapped = _wrap(_sanitize(_fill(line.get("text", ""), variables), text_font), text_font, text_w)
+        text = _apply_vars(line.get("text", ""), variables)
+        wrapped = _wrap(_sanitize(text, text_font), text_font, text_w)
         total = sum(len(l) for l in wrapped)
 
         elapsed_ms = 0
@@ -265,6 +321,7 @@ def play_dialogue(json_path, screen=None, events=None, variables=None):
             elapsed_ms += dt
             shown = min(total, int(elapsed_ms * CHARS_PER_SEC / 1000))
 
+            advance = False
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     pygame.quit()
@@ -273,24 +330,20 @@ def play_dialogue(json_path, screen=None, events=None, variables=None):
                     (event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE)
                     # 備援：輸入法仍攔截時，空白會以 TEXTINPUT 事件送來
                     or (event.type == pygame.TEXTINPUT and event.text == " ")
-                    or (event.type == pygame.MOUSEBUTTONDOWN and event.button == 1)   # 滑鼠左鍵點擊
+                    # 滑鼠左鍵；觸控板輕點、觸控螢幕點一下也是這個事件（滾輪不算）
+                    or (event.type == pygame.MOUSEBUTTONDOWN and event.button == 1)
                 ):
-                    sfx.play("advance")
-                    if shown < total:                       # 還在逐字：先全部顯示
-                        elapsed_ms = int(total * 1000 / CHARS_PER_SEC) + 1
-                        shown = total
-                    else:                                   # 已顯示完：下一句
-                        next_line = True
+                    advance = True                          # 同一幀不論收到幾個，只算一次
+
+            if advance:
+                sfx.play("advance")
+                if shown < total:                           # 還在逐字：先全部顯示
+                    elapsed_ms = int(total * 1000 / CHARS_PER_SEC) + 1
+                    shown = total
+                else:                                       # 已顯示完：下一句
+                    next_line = True
 
             if next_line:
-                if line.get("sfx"):                         # 換句時停止該句的音效
-                    sfx.stop(line["sfx"])
-                handler = events.get(line.get("event"))
-                if handler:
-                    handler()
-                    pygame.key.stop_text_input()
-                    pygame.event.clear()
-                    clock.tick()
                 break
 
             # 視窗剛好 1920x1080（含 pygame.SCALED）直接畫；否則畫在 canvas 再等比縮放
@@ -302,13 +355,16 @@ def play_dialogue(json_path, screen=None, events=None, variables=None):
             target.fill((0, 0, 0))
             if bg:
                 target.blit(bg, (0, 0))
-            for s in back_sprites:
-                target.blit(s, (0, 0))
+            for s, pos in back_sprites:
+                target.blit(s, pos)
             if box:
                 target.blit(box, (0, box_y))
-            for s in front_sprites:
-                target.blit(s, (0, 0))
+            for s, pos in front_sprites:
+                target.blit(s, pos)
 
+            if hint_surf:
+                target.blit(hint_surf, hint_surf.get_rect(
+                    midright=(SCREEN_W - HINT_MARGIN_RIGHT, box_y + SPEAKER_Y_OFFSET + 20)))
             if name_surf:
                 target.blit(name_surf, ((SCREEN_W - name_surf.get_width()) // 2,
                                         box_y + SPEAKER_Y_OFFSET))
@@ -327,6 +383,17 @@ def play_dialogue(json_path, screen=None, events=None, variables=None):
             if not direct:
                 _present(screen, canvas)
             pygame.display.flip()
+
+        # 這句讀完、按下 SPACE 之後：觸發這句指定的事件（畫面仍停在這句，事件會以它當背景）
+        for event_name in _as_list(line.get("event")):
+            callback = (events or {}).get(event_name)
+            if callback is None:
+                print(f"[dialogue_scene] 沒有註冊的事件：{event_name}")
+                continue
+            callback()
+            pygame.key.stop_text_input()
+            pygame.event.clear()
+            clock.tick()                                    # 丟掉事件期間累積的時間
 
 
 if __name__ == "__main__":

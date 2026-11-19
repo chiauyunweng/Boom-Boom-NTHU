@@ -26,7 +26,7 @@ import sys
 
 import pygame
 
-from scenes import music, sfx
+from scenes import sfx
 from scenes.dialogue_scene import (
     ASSET_DIR, FONT_ANTIALIAS, SCREEN_H, SCREEN_W, SPEAKER_COLOR, TEXT_COLOR,
     _make_font, _present, _resolve_dialogue, _wrap,
@@ -43,13 +43,29 @@ ROD_FRAMES = 5
 SPARKLE_FRAMES = 4
 
 FAIL_TEXT = "沒釣到東西。"
-FAIL_DISPLAY_MS = 2000
+FAIL_DISPLAY_MS = 2000         # 超過這個時間沒按 SPACE 就自動回到釣魚畫面
+FAIL_SKIP_GUARD_MS = 200       # 失敗畫面剛出現的這段時間內按 SPACE 不算（避免收線時連按直接跳過）
 FAIL_TEXT_SIZE = 96            # 比對話文字（32）大；Unifont 請用 16 的倍數
 OUTLINE_PX = 4                 # 黑框粗細
 ITEM_NAME_SIZE = 64
 ITEM_DESC_SIZE = 32
-ITEM_DESC_MAX_W = 1400
+ITEM_NAME_Y = 780              # 物品名稱（上緣）的 y；說明文字接在名稱下方
+ITEM_DESC_MAX_W = 1300
 HINT_TEXT = "按 SPACE 繼續"
+SEAM_OVERLAP = 2               # 水面捲動：相鄰兩張圖重疊的像素數（消除接縫細線）
+
+INSTRUCTION_TITLE = "釣魚操作說明"
+INSTRUCTION_LINES = [
+    "1. 按 SPACE，判定線開始上下移動",
+    "2. 再按 SPACE，判定線停止並收線",
+    "3. 判定線停在判定範圍內，就能釣到東西",
+    "4. 釣到物品後，按 SPACE 繼續",
+    "5. 沒釣到時會自動重來，也可以按 SPACE 立即重來",
+]
+INSTRUCTION_START = "按 SPACE 開始"
+TITLE_SIZE = 64
+HINT_READY = "按 SPACE 開始移動判定線"
+HINT_MOVING = "按 SPACE 停止判定線"
 OVERLAY_ALPHA = 170            # 物品畫面的半透明黑底（0~255）
 
 AUTO_START_AFTER_RETURN = False   # True：回到釣魚畫面且收線動畫結束後，判定線自動開始動
@@ -64,8 +80,9 @@ ITEMS = [
 ]
 # --------------------------------------------
 
-READY, MOVING, REELING, ITEM, FAIL, RETURN = "ready", "moving", "reeling", "item", "fail", "return"
-PHASE1_STATES = (READY, MOVING, REELING, RETURN)   # sparkles 只在這些狀態播放
+INTRO, READY, MOVING, REELING, ITEM, FAIL, RETURN = (
+    "intro", "ready", "moving", "reeling", "item", "fail", "return")
+PHASE1_STATES = (INTRO, READY, MOVING, REELING, RETURN)   # sparkles 只在這些狀態播放
 
 
 def _load(name):
@@ -105,12 +122,27 @@ def _outlined(font, text, color, px=OUTLINE_PX):
     return surf
 
 
-def _blit_scroll(target, img, y, offset):
-    w = img.get_width()
-    x = -(int(offset) % w)          # offset 增加 → 畫面向左捲動
+def _blit_scroll(target, img, y, offset, overlap=0):
+    """向左捲動並無縫重複。overlap：相鄰兩張重疊的像素，用來蓋掉接縫的細線。"""
+    step = img.get_width() - overlap
+    x = -(int(offset) % step)       # offset 增加 → 畫面向左捲動
     while x < SCREEN_W:
         target.blit(img, (x, y))
-        x += w
+        x += step
+
+
+def _fit_to_screen(img):
+    """物品圖當成整張畫面的素材：剛好 1920x1080 就直接貼 (0,0)；
+    尺寸不同（例如比畫面大）就等比縮放到完整放進 1920x1080 內並置中，不會超出畫面。"""
+    if img is None:
+        return None, (0, 0)
+    w, h = img.get_size()
+    if (w, h) == (SCREEN_W, SCREEN_H):
+        return img, (0, 0)
+    scale = min(SCREEN_W / w, SCREEN_H / h)
+    size = (max(1, round(w * scale)), max(1, round(h * scale)))
+    print(f"[fishing_scene] 物品圖尺寸是 {w}x{h}，已縮放到 {size[0]}x{size[1]} 置中顯示")
+    return pygame.transform.smoothscale(img, size), ((SCREEN_W - size[0]) // 2, (SCREEN_H - size[1]) // 2)
 
 
 def _load_descriptions():
@@ -123,7 +155,7 @@ def _load_descriptions():
 
 
 class FishingGame:
-    def __init__(self):
+    def __init__(self, show_instructions=True):
         # --- 素材 ---
         self.bg_sky = _load("bg_game_sky")
         self.bg_cloud = _load("bg_game_move_cloud")
@@ -154,9 +186,17 @@ class FishingGame:
         self.name_font = _make_font(ITEM_NAME_SIZE)
         self.desc_font = _make_font(ITEM_DESC_SIZE)
         self.hint_surf = _outlined(self.desc_font, HINT_TEXT, TEXT_COLOR, 2)
+        self.hint_ready = _outlined(self.desc_font, HINT_READY, TEXT_COLOR, 2)
+        self.hint_moving = _outlined(self.desc_font, HINT_MOVING, TEXT_COLOR, 2)
+        title_font = _make_font(TITLE_SIZE)
+        self.intro_surfs = [_outlined(title_font, INSTRUCTION_TITLE, SPEAKER_COLOR)]
+        self.intro_surfs += [_outlined(self.desc_font, t, TEXT_COLOR, 2) for t in INSTRUCTION_LINES]
+        self.intro_start = _outlined(self.name_font, INSTRUCTION_START, SPEAKER_COLOR)
         self.overlay = pygame.Surface((SCREEN_W, SCREEN_H), pygame.SRCALPHA)
         self.overlay.fill((0, 0, 0, OVERLAY_ALPHA))
-        self.item_surfs = []          # [(surface, (x, y)), ...]
+        self.item_image = None
+        self.item_pos = (0, 0)
+        self.item_surfs = []          # 名稱與說明 [(surface, (x, y)), ...]，最後才畫（最上層）
 
         # --- 狀態 ---
         self.t = 0.0                  # 背景捲動用
@@ -165,6 +205,7 @@ class FishingGame:
         self.fail_timer = 0
         self.done = False
         self._reset_phase1()
+        self.state = INTRO if show_instructions else READY
 
     # ---------- 第一階段 ----------
     def _reset_phase1(self):
@@ -192,7 +233,6 @@ class FishingGame:
 
     # ---------- 第二階段 ----------
     def on_success(self):
-        sfx.play("catch")
         if not self.items:            # 物品已釣完：這次成功就直接結束遊戲
             self.done = True
             return
@@ -202,22 +242,20 @@ class FishingGame:
         self.current = item
         self._build_item_surfs(item)
         self.state = ITEM
+        sfx.play("catch")
 
     def on_fail(self):
-        sfx.play("miss")
         self.fail_timer = pygame.time.get_ticks()
         self.state = FAIL
+        sfx.play("miss")
 
     def _build_item_surfs(self, item):
+        """物品圖與背景一樣整張 1920x1080 對齊 (0,0)；名稱與說明固定位置、獨立一層。"""
+        self.item_image, self.item_pos = _fit_to_screen(item["image"])
         cx = SCREEN_W // 2
         self.item_surfs = []
-        y = SCREEN_H // 2
-        if item["image"]:
-            r = item["image"].get_rect(center=(cx, SCREEN_H // 2))
-            self.item_surfs.append((item["image"], r.topleft))
-            y = r.bottom
         name = _outlined(self.name_font, item["name"], SPEAKER_COLOR)
-        y += 30
+        y = ITEM_NAME_Y
         self.item_surfs.append((name, (cx - name.get_width() // 2, y)))
         y += name.get_height() + 10
         for ln in _wrap(item["description"], self.desc_font, ITEM_DESC_MAX_W):
@@ -233,10 +271,13 @@ class FishingGame:
         if self.state in PHASE1_STATES:
             self.sparkle_t += dt
 
-        if self.state == READY:
+        if self.state == INTRO:
+            if space:
+                self.state = READY
+                sfx.play("cast")
+        elif self.state == READY:
             if space:
                 self.state = MOVING
-                sfx.play("cast")
         elif self.state == MOVING:
             self._move_line(dt)
             if space:                                   # 停止判定線，開始收線
@@ -248,10 +289,10 @@ class FishingGame:
                 self._judge()
         elif self.state == ITEM:
             if space:
-                sfx.play("advance")
                 self._begin_return()
-        elif self.state == FAIL:                        # 計時期間忽略空白鍵
-            if pygame.time.get_ticks() - self.fail_timer >= FAIL_DISPLAY_MS:
+        elif self.state == FAIL:        # 2 秒內沒按 SPACE 就自動回去；按 SPACE 則立即回去
+            waited = pygame.time.get_ticks() - self.fail_timer
+            if waited >= FAIL_DISPLAY_MS or (space and waited >= FAIL_SKIP_GUARD_MS):
                 self._begin_return()
         elif self.state == RETURN:
             self.rod_t += dt
@@ -262,6 +303,7 @@ class FishingGame:
 
     def _begin_return(self):
         self.state, self.rod_t = RETURN, 0.0
+        sfx.play("cast")                                # 反向播放釣竿 = 甩竿
 
     # ---------- 繪製 ----------
     def _rod_frame(self):
@@ -282,7 +324,8 @@ class FishingGame:
         if self.bg_cloud:
             _blit_scroll(target, self.bg_cloud, 0, self.t * CLOUD_SPEED)
         if self.bg_water:
-            _blit_scroll(target, self.bg_water, SCREEN_H - self.bg_water.get_height(), self.t * WATER_SPEED)
+            _blit_scroll(target, self.bg_water, SCREEN_H - self.bg_water.get_height(),
+                         self.t * WATER_SPEED, SEAM_OVERLAP)
         sp = self.sparkles[int(self.sparkle_t * SPARKLE_FPS) % SPARKLE_FRAMES]
         if sp:
             target.blit(sp, (0, 0))
@@ -296,25 +339,40 @@ class FishingGame:
         target.blit(self.range_img, (self.bar_rect.left, self.range_y))
         target.blit(self.line_img, (self.line_x, int(self.line_y)))
 
-        if self.state == FAIL:
+        # 文字一律最後畫（最上層），不會被物品圖或其他圖層擋住
+        if self.state == READY:
+            target.blit(self.hint_ready, self.hint_ready.get_rect(midtop=(SCREEN_W // 2, 30)))
+        elif self.state == MOVING:
+            target.blit(self.hint_moving, self.hint_moving.get_rect(midtop=(SCREEN_W // 2, 30)))
+        elif self.state == FAIL:
             target.blit(self.fail_surf, self.fail_surf.get_rect(center=(SCREEN_W // 2, SCREEN_H // 2)))
         elif self.state == ITEM:
             target.blit(self.overlay, (0, 0))
+            if self.item_image:
+                target.blit(self.item_image, self.item_pos)
             for surf, pos in self.item_surfs:
                 target.blit(surf, pos)
-            target.blit(self.hint_surf, self.hint_surf.get_rect(midbottom=(SCREEN_W // 2, SCREEN_H - 40)))
+            target.blit(self.hint_surf, self.hint_surf.get_rect(bottomright=(SCREEN_W - 40, SCREEN_H - 30)))
+        elif self.state == INTRO:
+            target.blit(self.overlay, (0, 0))
+            y = 220
+            for i, surf in enumerate(self.intro_surfs):
+                target.blit(surf, surf.get_rect(midtop=(SCREEN_W // 2, y)))
+                y += surf.get_height() + (40 if i == 0 else 22)
+            y += 40
+            target.blit(self.intro_start, self.intro_start.get_rect(midtop=(SCREEN_W // 2, y)))
 
 
-def play_fishing(screen=None):
-    """進行釣魚遊戲，回傳 inventory（list of {"id","name","description"}）。"""
+def play_fishing(screen=None, show_instructions=True):
+    """進行釣魚遊戲，回傳 inventory（list of {"id","name","description"}）。
+    show_instructions：一開始顯示操作說明。"""
     if not pygame.get_init():
         pygame.init()
     screen = screen or pygame.display.get_surface()
     if screen is None:
         screen = pygame.display.set_mode((SCREEN_W, SCREEN_H), pygame.SCALED | pygame.RESIZABLE)
 
-    music.play("lake")
-    game = FishingGame()
+    game = FishingGame(show_instructions)
     canvas = pygame.Surface((SCREEN_W, SCREEN_H)).convert()   # 視窗不是 1920x1080 時才會用到
     clock = pygame.time.Clock()
     pygame.key.stop_text_input()    # 避免中文輸入法吃掉空白鍵
@@ -337,7 +395,8 @@ def play_fishing(screen=None):
 
         screen = pygame.display.get_surface()
         direct = screen.get_size() == (SCREEN_W, SCREEN_H)
-        game.draw(screen if direct else canvas)
+        target = screen if direct else canvas
+        game.draw(target)
         if not direct:
             _present(screen, canvas)
         pygame.display.flip()

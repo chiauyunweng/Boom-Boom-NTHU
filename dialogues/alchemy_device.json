@@ -1,7 +1,7 @@
 {
   "dialogue_id": "alchemy_device",
   "original_id": "go_alchemy_2",
-  "bg": null,
+  "bg": "bg_game_find_room",
   "bgm": "lab",
   "characters": [
     "short_and_square"

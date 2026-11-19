@@ -2,7 +2,7 @@
   "dialogue_id": "alchemy_wrong_procedure",
   "original_id": "alchemy_wrong_procedure",
   "note": "若提交的操作順序錯誤",
-  "bg": null,
+  "bg": "bg_game_find_room",
   "bgm": "none",
   "characters": [
     "short_and_square"

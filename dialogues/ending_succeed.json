@@ -1,7 +1,7 @@
 {
   "dialogue_id": "ending_succeed",
   "original_id": "ending_succeed",
-  "bg": null,
+  "bg": "bg_sky_night",
   "bgm": "villain",
   "characters": [
     "short_and_square"
@@ -34,20 +34,12 @@
     {
       "speaker": "",
       "speaker_id": null,
-      "text": "（畫面一陣劇烈震動，隨後陷入黑暗。）",
+      "text": "（大地一陣劇烈震動，黑夜瞬間宛如白晝。）",
       "characters": [
         "short_and_square"
       ],
       "sfx": "explosion",
       "bgm": "none"
-    },
-    {
-      "speaker": "",
-      "speaker_id": null,
-      "text": "（畫面切換）",
-      "characters": [
-        "short_and_square"
-      ]
     },
     {
       "speaker": "高為元",
