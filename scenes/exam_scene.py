@@ -39,9 +39,10 @@ FOLDER_IMG = "obj_idle_folder.png"       # 還沒有圖檔時會自動用程式�
 
 # 座位表：ROWS x COLS；Row 1 最靠近黑板；Col 1~8 由左至右，兩兩一組
 ROWS, COLS = 6, 8
+DOOR_NAMES = ["教室一", "教室二", "教室三"]    # 門上的標示（依位置由左至右，固定不變）
 CLASSROOMS = [
     {"name": "教室一", "taken": {(1, 3), (2, 6), (3, 1), (4, 7), (5, 4)}, "correct": None},
-    {"name": "教室二", "taken": {(1, 5), (2, 2), (3, 8), (4, 3), (6, 1)}, "correct": None},
+    {"name": "教室二", "taken": {(1, 6), (2, 4), (3, 7), (4, 5), (5, 3)}, "correct": None},
     {"name": "教室三", "taken": {(1, 2), (2, 5), (3, 7), (5, 3), (6, 8)}, "correct": (4, 1)},
 ]
 
@@ -61,7 +62,8 @@ RULES_BTN = pygame.Rect(20, SCREEN_H - 110, 180, 80)          # 找教室畫面�
 # 獲得的「文件」道具：內容之後在這裡填入
 DOC_NAME = "文件"
 DOC_TITLE = "文件"
-DOC_TEXT = "（此處為文件內容預留欄位，請之後填入。）"
+DOC_TEXT = "資料夾裡是一張地圖。"
+DOC_IMAGE = "obj_map"          # assets/obj/obj_map.(png|jpg)，副檔名自動比對
 
 # 版面
 DOOR_H = 560
@@ -273,15 +275,15 @@ def _draw_taken_seat(target, r):
     pygame.draw.rect(target, (35, 35, 35), r, 2, border_radius=8)
 
 
-def _draw_seating(target, fonts, room_idx, mouse):
+def _draw_seating(target, fonts, room, label, mouse):
+    """room：被指派到該扇門的教室資料；label：門上的名稱（依門的位置，不隨隨機分配改變）。"""
     """畫座位表彈窗；回傳滑鼠目前指向的空位 (row, col) 或 None。"""
-    room = CLASSROOMS[room_idx]
     shade = pygame.Surface((SCREEN_W, SCREEN_H), pygame.SRCALPHA)
     shade.fill((0, 0, 0, 170))
     target.blit(shade, (0, 0))
     _panel(target, PANEL, (46, 52, 66, 250), (200, 205, 230), 6, 26)
 
-    title = fonts["big"].render(f"{room['name']} 座位表", FONT_ANTIALIAS, TEXT)
+    title = fonts["big"].render(f"{label} 座位表", FONT_ANTIALIAS, TEXT)
     target.blit(title, (PANEL.left + 50, PANEL.top + 32))
 
     hover_close = CLOSE_RECT.collidepoint(mouse)
@@ -338,6 +340,8 @@ def run_find_room():
     doors = [pygame.Rect(left + i * (door_w + gap), 250, door_w, DOOR_H) for i in range(3)]
 
     remaining_ms = FIND_ROOM_SEC * 1000
+    rooms = list(CLASSROOMS)              # 每次進入找教室階段都重新隨機指派教室到三扇門（由左至右）
+    random.shuffle(rooms)
     open_room = None
     rules_open = False
     toast, toast_ms = "", 0
@@ -389,11 +393,11 @@ def run_find_room():
                 else:
                     for row in range(1, ROWS + 1):
                         for col in range(1, COLS + 1):
-                            if (row, col) in CLASSROOMS[open_room]["taken"]:
+                            if (row, col) in rooms[open_room]["taken"]:
                                 continue
                             if not _seat_rect(row, col).inflate(10, 10).collidepoint(mouse):
                                 continue
-                            if CLASSROOMS[open_room]["correct"] == (row, col):
+                            if rooms[open_room]["correct"] == (row, col):
                                 sfx.play("success")
                                 return True
                             sfx.play("buzz")
@@ -412,7 +416,7 @@ def run_find_room():
                 target.blit(img, img.get_rect(center=d.center) if hov else d.topleft)
             else:
                 pygame.draw.rect(target, GOLD if hov else (150, 110, 70), d, border_radius=10)
-            lab = fonts["big"].render(CLASSROOMS[i]["name"], FONT_ANTIALIAS, GOLD if hov else TEXT)
+            lab = fonts["big"].render(DOOR_NAMES[i], FONT_ANTIALIAS, GOLD if hov else TEXT)
             lr = lab.get_rect(midtop=(d.centerx, d.bottom + 16))
             _panel(target, lr.inflate(30, 12), (0, 0, 0, 160), (180, 180, 255), 2, 10)
             target.blit(lab, lr)
@@ -422,7 +426,7 @@ def run_find_room():
         target.blit(hint, hr)
 
         if open_room is not None:
-            _draw_seating(target, fonts, open_room, mouse)
+            _draw_seating(target, fonts, rooms[open_room], DOOR_NAMES[open_room], mouse)
         hov_rules = RULES_BTN.collidepoint(mouse) and not rules_open
         _panel(target, RULES_BTN, (245, 232, 196, 245), GOLD if hov_rules else INK, 5, 14)
         rt = fonts["small"].render(RULES_BTN_LABEL, FONT_ANTIALIAS, INK)
@@ -634,11 +638,12 @@ def _draw_password(target, fonts, entry, mouse, wrong_count, shake):
     return close, hover_key
 
 
-def _draw_doc_view(target, fonts, title, text, footer):
+def _draw_doc_view(target, fonts, title, text, footer, image=None):
+    """閱讀視窗。image：選用的 Surface，會等比縮放置中顯示在標題下方、說明文字上方。"""
     shade = pygame.Surface((SCREEN_W, SCREEN_H), pygame.SRCALPHA)
     shade.fill((0, 0, 0, 170))
     target.blit(shade, (0, 0))
-    r = pygame.Rect(0, 0, 1100, 720)
+    r = pygame.Rect(0, 0, 1400, 900) if image is not None else pygame.Rect(0, 0, 1100, 720)
     r.center = (SCREEN_W // 2, SCREEN_H // 2)
     pygame.draw.rect(target, PAPER, r, border_radius=12)
     pygame.draw.rect(target, INK, r, 6, border_radius=12)
@@ -652,12 +657,43 @@ def _draw_doc_view(target, fonts, title, text, footer):
     target.blit(tt, tt.get_rect(midtop=(r.centerx, r.top + 50)))
     pygame.draw.line(target, INK, (r.left + 80, r.top + 125), (r.right - 80, r.top + 125), 3)
     y = r.top + 165
+    if image is not None:
+        box = pygame.Rect(r.left + 60, r.top + 145, r.width - 120, r.height - 145 - 170)
+        scale = min(box.w / image.get_width(), box.h / image.get_height())
+        img = pygame.transform.smoothscale(
+            image, (max(1, int(image.get_width() * scale)), max(1, int(image.get_height() * scale))))
+        ir = img.get_rect(center=box.center)
+        target.blit(img, ir)
+        pygame.draw.rect(target, INK, ir.inflate(8, 8), 4)
+        y = box.bottom + 24
     for ln in _wrap(text, fonts["small"], r.width - 160):
         if ln:
             target.blit(fonts["small"].render(ln, FONT_ANTIALIAS, INK), (r.left + 80, y))
         y += fonts["small"].get_linesize() + 14
     ft = fonts["small"].render(footer, FONT_ANTIALIAS, (130, 110, 90))
     target.blit(ft, ft.get_rect(midbottom=(r.centerx, r.bottom - 30)))
+
+
+_doc_image_cache = []
+
+
+def _load_doc_image():
+    """載入文件圖片（自動比對 .png / .jpg / .jpeg）；找不到回傳 None。"""
+    if _doc_image_cache:
+        return _doc_image_cache[0]
+    img = None
+    for ext in (".png", ".PNG", ".jpg", ".JPG", ".jpeg"):
+        p = ASSET_DIR / "obj" / (DOC_IMAGE + ext)
+        if p.exists():
+            try:
+                img = pygame.image.load(str(p)).convert_alpha()      # 保留透明通道
+            except pygame.error:
+                img = None
+            break
+    if img is None:
+        print(f"[exam_scene] 找不到文件圖片：{ASSET_DIR / 'obj' / DOC_IMAGE}.*")
+    _doc_image_cache.append(img)
+    return img
 
 
 def run_computer():
@@ -815,15 +851,29 @@ def run_computer():
 
 # ---------------- 獲得道具 ----------------
 def show_item_acquired():
-    """獲得「文件」彈窗：先顯示獲得提示，點擊後展開文件內容，再點擊關閉。"""
+    """獲得地圖：螢幕中央直接顯示 obj_map 大圖（無視窗、標題、文字）。
+    點圖片以外的遮罩區、右上角 [X]、或按 Esc / 空白 / Enter 關閉；關閉後才返回。"""
     screen = pygame.display.get_surface()
     backdrop = screen.copy()
     if backdrop.get_size() != (SCREEN_W, SCREEN_H):
         backdrop = _load_bg(BG_COMPUTER)
     frame = _Frame()
-    fonts = {"big": _make_font(48), "small": _make_font(32)}
     clock = pygame.time.Clock()
-    stage = 0
+
+    img = _load_doc_image()
+    if img is not None:                                   # 等比縮放到畫面內（保留邊距）
+        scale = min((SCREEN_W - 160) / img.get_width(), (SCREEN_H - 160) / img.get_height())
+        img = pygame.transform.smoothscale(
+            img, (max(1, int(img.get_width() * scale)), max(1, int(img.get_height() * scale))))
+        img_rect = img.get_rect(center=(SCREEN_W // 2, SCREEN_H // 2))
+    else:
+        img_rect = pygame.Rect(0, 0, 0, 0)
+    xr = pygame.Rect(0, 0, 56, 56)                        # 圖片右上角的關閉 [X]
+    xr.center = (img_rect.right - 10, img_rect.top + 10) if img else (SCREEN_W - 60, 60)
+    xr.clamp_ip(pygame.Rect(0, 0, SCREEN_W, SCREEN_H))
+    mouse = (0, 0)
+
+    pygame.key.stop_text_input()
     pygame.event.clear()
     sfx.play("catch")
     while True:
@@ -831,36 +881,30 @@ def show_item_acquired():
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 _quit()
-            if _is_close_event(event):
-                sfx.play("paper")
-                if stage == 1:
+            elif event.type == pygame.MOUSEMOTION:
+                mouse = _to_logical(event.pos)
+            elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                pos = _to_logical(event.pos)
+                if xr.collidepoint(pos) or not img_rect.collidepoint(pos):
+                    sfx.play("paper")
                     return
-                stage = 1
+            elif event.type == pygame.KEYDOWN and event.key in (
+                    pygame.K_ESCAPE, pygame.K_SPACE, pygame.K_RETURN):
+                sfx.play("paper")
+                return
         target = frame.begin()
         target.blit(backdrop, (0, 0))
-        if stage == 0:
-            shade = pygame.Surface((SCREEN_W, SCREEN_H), pygame.SRCALPHA)
-            shade.fill((0, 0, 0, 170))
-            target.blit(shade, (0, 0))
-            r = pygame.Rect(0, 0, 760, 460)
-            r.center = (SCREEN_W // 2, SCREEN_H // 2)
-            _panel(target, r, (30, 40, 70, 245), (120, 200, 255), 6, 28)
-            t = fonts["big"].render("獲得道具", FONT_ANTIALIAS, GOLD)
-            target.blit(t, t.get_rect(midtop=(r.centerx, r.top + 40)))
-            icon = pygame.Rect(0, 0, 130, 170)
-            icon.center = (r.centerx, r.centery + 10)
-            pygame.draw.rect(target, PAPER, icon, border_radius=8)
-            pygame.draw.rect(target, INK, icon, 4, border_radius=8)
-            for k in range(5):
-                y = icon.top + 34 + k * 24
-                pygame.draw.line(target, (150, 130, 100), (icon.left + 18, y),
-                                 (icon.right - 18 - (k % 2) * 28, y), 3)
-            n = fonts["big"].render(f"「{DOC_NAME}」", FONT_ANTIALIAS, TEXT)
-            target.blit(n, n.get_rect(midtop=(r.centerx, icon.bottom + 24)))
-            h = fonts["small"].render("點擊任意處查看內容", FONT_ANTIALIAS, HINT)
-            target.blit(h, h.get_rect(midbottom=(r.centerx, r.bottom - 22)))
-        else:
-            _draw_doc_view(target, fonts, DOC_TITLE, DOC_TEXT, "點擊任意處或按空白鍵關閉")
+        shade = pygame.Surface((SCREEN_W, SCREEN_H), pygame.SRCALPHA)
+        shade.fill((0, 0, 0, 170))
+        target.blit(shade, (0, 0))
+        if img is not None:
+            target.blit(img, img_rect)
+        hov = xr.collidepoint(mouse)
+        pygame.draw.rect(target, (220, 80, 80) if hov else (170, 60, 60), xr, border_radius=10)
+        pygame.draw.rect(target, TEXT, xr, 3, border_radius=10)
+        xc = xr.inflate(-24, -24)
+        pygame.draw.line(target, TEXT, xc.topleft, xc.bottomright, 5)
+        pygame.draw.line(target, TEXT, xc.topright, xc.bottomleft, 5)
         frame.end()
 
 
@@ -920,7 +964,7 @@ def play_exam_chapter():
                 play_dialogue("puzzle_succeed")
                 show_item_acquired()
                 return {"name": DOC_NAME, "text": DOC_TEXT}
-            play_dialogue("puzzle_fail", bg_override="bg_computer")       # 密碼錯 5 次或超時
+            play_dialogue("puzzle_fail")       # 密碼錯 5 次或超時
             _wait_retry(_load_bg(BG_COMPUTER), "重新解謎")
 
 
