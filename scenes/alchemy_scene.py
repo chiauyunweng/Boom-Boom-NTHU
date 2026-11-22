@@ -17,7 +17,9 @@ import pygame
 
 from scenes import music, sfx
 from scenes.dialogue_scene import (
-    ASSET_DIR, FONT_ANTIALIAS, SCREEN_H, SCREEN_W, _make_font, _present, _wrap, play_dialogue,
+    ASSET_DIR, FONT_ANTIALIAS, SCREEN_H, SCREEN_W, _make_font, _present, _wrap,
+    get_virtual_screen, get_virtual_snapshot, handle_window_event, init_display,
+    play_dialogue, screen_to_virtual,
 )
 
 # ---------------- 可調整設定 ----------------
@@ -132,15 +134,9 @@ def _load_bg():
     return bg
 
 
-def _to_logical(pos):
-    """視窗座標 → 1920x1080 邏輯座標（使用 pygame.SCALED 時兩者相同）。"""
-    win_w, win_h = pygame.display.get_surface().get_size()
-    if (win_w, win_h) == (SCREEN_W, SCREEN_H):
-        return pos
-    scale = min(win_w / SCREEN_W, win_h / SCREEN_H)
-    ox = (win_w - SCREEN_W * scale) / 2
-    oy = (win_h - SCREEN_H * scale) / 2
-    return int((pos[0] - ox) / scale), int((pos[1] - oy) / scale)
+def _to_logical(pos, clamp=True):
+    """視窗座標 → 1920x1080 虛擬座標（委託給 dialogue_scene.screen_to_virtual）。"""
+    return screen_to_virtual(pos, clamp=clamp)
 
 
 def _panel(target, rect, fill, border, width=4, radius=18):
@@ -189,9 +185,10 @@ def _draw_manual(target, title_font, font):
 
 
 def _is_close_event(event):
+    if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+        return screen_to_virtual(event.pos) is not None
     return (
-        (event.type == pygame.MOUSEBUTTONDOWN and event.button == 1)
-        or (event.type == pygame.KEYDOWN
+        (event.type == pygame.KEYDOWN
             and event.key in (pygame.K_SPACE, pygame.K_ESCAPE, pygame.K_RETURN))
         or (event.type == pygame.TEXTINPUT and event.text == " ")
     )
@@ -199,12 +196,8 @@ def _is_close_event(event):
 
 def show_manual():
     """獨立顯示說明書（劇情中拿起說明書時用），蓋在目前畫面上，關閉後返回。"""
-    screen = pygame.display.get_surface()
-    backdrop = screen.copy()
-    if backdrop.get_size() != (SCREEN_W, SCREEN_H):
-        backdrop = pygame.Surface((SCREEN_W, SCREEN_H)).convert()
-        backdrop.fill((0, 0, 0))
-    canvas = pygame.Surface((SCREEN_W, SCREEN_H)).convert()
+    backdrop = get_virtual_snapshot()
+    canvas = get_virtual_screen()
     title_font, font = _make_font(48), _make_font(32)
     clock = pygame.time.Clock()
     pygame.event.clear()
@@ -214,16 +207,15 @@ def show_manual():
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 _quit()
+            if handle_window_event(event):
+                continue
             if _is_close_event(event):
                 sfx.play("paper")
                 return
         screen = pygame.display.get_surface()
-        direct = screen.get_size() == (SCREEN_W, SCREEN_H)
-        target = screen if direct else canvas
-        target.blit(backdrop, (0, 0))
-        _draw_manual(target, title_font, font)
-        if not direct:
-            _present(screen, canvas)
+        canvas.blit(backdrop, (0, 0))
+        _draw_manual(canvas, title_font, font)
+        _present(screen, canvas)
         pygame.display.flip()
 
 
@@ -235,8 +227,7 @@ def run_alchemy(items=None):
     if missing:
         print(f"[alchemy_scene] 注意：缺少正確順序所需的物品 {missing}，此關不可能成功")
 
-    screen = pygame.display.get_surface()
-    canvas = pygame.Surface((SCREEN_W, SCREEN_H)).convert()
+    canvas = get_virtual_screen()
     clock = pygame.time.Clock()
 
     bg = _load_bg()
@@ -290,8 +281,10 @@ def run_alchemy(items=None):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 _quit()
+            elif handle_window_event(event):
+                continue
             elif event.type == pygame.MOUSEMOTION:
-                mouse = _to_logical(event.pos)
+                mouse = screen_to_virtual(event.pos, clamp=True)
             elif success_ms is not None:
                 continue
             elif manual_open:
@@ -299,7 +292,10 @@ def run_alchemy(items=None):
                     manual_open = False
                     sfx.play("paper")
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                mouse = _to_logical(event.pos)
+                vpos = screen_to_virtual(event.pos)
+                if vpos is None:
+                    continue
+                mouse = vpos
                 if MANUAL_ICON_RECT.collidepoint(mouse):
                     manual_open = True
                     sfx.play("paper")
@@ -311,7 +307,7 @@ def run_alchemy(items=None):
                         sfx.play("pickup")
                         break
             elif event.type == pygame.MOUSEBUTTONUP and event.button == 1 and dragging:
-                mouse = _to_logical(event.pos)
+                mouse = screen_to_virtual(event.pos, clamp=True)
                 if DEVICE_RECT.collidepoint(mouse):
                     step = len(placed)
                     if step < len(CORRECT_ORDER) and dragging == CORRECT_ORDER[step]:
@@ -348,8 +344,7 @@ def run_alchemy(items=None):
 
         # ---------------- 繪製 ----------------
         screen = pygame.display.get_surface()
-        direct = screen.get_size() == (SCREEN_W, SCREEN_H)
-        target = screen if direct else canvas
+        target = canvas
         target.blit(bg, (0, 0))
 
         # 物品欄
@@ -432,8 +427,7 @@ def run_alchemy(items=None):
             _draw_manual(target, big_font, font)
             target.blit(timer, timer.get_rect(topright=(SCREEN_W - 50, SLOT_TOP)))  # 閱讀時仍看得到時間
 
-        if not direct:
-            _present(screen, canvas)
+        _present(screen, canvas)
         pygame.display.flip()
 
 
@@ -450,8 +444,6 @@ def play_alchemy_chapter(items=None):
 
 
 if __name__ == "__main__":
-    pygame.init()
-    pygame.display.set_mode((SCREEN_W, SCREEN_H), pygame.SCALED | pygame.RESIZABLE)
-    pygame.display.set_caption("Alchemy Test")
+    init_display("Alchemy Test")
     play_alchemy_chapter()
     pygame.quit()

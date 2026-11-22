@@ -30,6 +30,7 @@ from scenes import sfx
 from scenes.dialogue_scene import (
     ASSET_DIR, FONT_ANTIALIAS, SCREEN_H, SCREEN_W, SPEAKER_COLOR, TEXT_COLOR,
     _make_font, _present, _resolve_dialogue, _wrap,
+    get_virtual_screen, handle_window_event, init_display, screen_to_virtual,
 )
 
 # ---------------- 可調整設定 ----------------
@@ -370,10 +371,10 @@ def play_fishing(screen=None, show_instructions=True):
         pygame.init()
     screen = screen or pygame.display.get_surface()
     if screen is None:
-        screen = pygame.display.set_mode((SCREEN_W, SCREEN_H), pygame.SCALED | pygame.RESIZABLE)
+        screen = init_display()
 
     game = FishingGame(show_instructions)
-    canvas = pygame.Surface((SCREEN_W, SCREEN_H)).convert()   # 視窗不是 1920x1080 時才會用到
+    canvas = get_virtual_screen()
     clock = pygame.time.Clock()
     pygame.key.stop_text_input()    # 避免中文輸入法吃掉空白鍵
     pygame.event.clear()
@@ -385,28 +386,29 @@ def play_fishing(screen=None, show_instructions=True):
             if event.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()
+            elif handle_window_event(event):
+                continue
             elif (event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE) or \
                     (event.type == pygame.TEXTINPUT and event.text == " "):
                 space = True            # 同一幀無論收到幾個空白事件，只算一次
+            elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                if screen_to_virtual(event.pos) is not None:
+                    space = True
 
         game.update(dt, space)
         if game.done:
             break
 
         screen = pygame.display.get_surface()
-        direct = screen.get_size() == (SCREEN_W, SCREEN_H)
-        target = screen if direct else canvas
-        game.draw(target)
-        if not direct:
-            _present(screen, canvas)
+        game.draw(canvas)
+        _present(screen, canvas)
         pygame.display.flip()
 
     return game.inventory
 
 
 if __name__ == "__main__":
-    pygame.init()
-    pygame.display.set_mode((SCREEN_W, SCREEN_H), pygame.SCALED | pygame.RESIZABLE)
+    init_display()
     inv = play_fishing()
     print("inventory:", [i["name"] for i in inv])
     pygame.quit()

@@ -1,6 +1,6 @@
 import sys
 import pygame
-from scenes.dialogue_scene import play_dialogue
+from scenes.dialogue_scene import init_display, play_dialogue
 from scenes.alchemy_scene import play_alchemy_chapter
 from scenes.fishing_scene import play_fishing
 from scenes.exam_scene import play_exam_chapter
@@ -14,12 +14,8 @@ def main():
   except Exception:
     pass
 
-  pygame.init()
-
-  # 建立 1920x1080 邏輯視窗，並加上 pygame.SCALED 實現等比縮放與自動填黑
-  # 修改後：直接以標準 1920x1080 視窗開啟，保留縮放與視窗化能力
-  screen = pygame.display.set_mode((1920, 1080), pygame.SCALED | pygame.RESIZABLE)
-  pygame.display.set_caption("Visual Novel Game")
+  # 依據當前螢幕解析度建立 16:9 自適應可縮放視窗，所有內容繪製在 1920x1080 虛擬畫布上
+  screen = init_display("Visual Novel Game")
   sfx.preload()   # 先合成好所有音效，避免第一次播放時卡頓
 
   print("--- 遊戲開始 ---")

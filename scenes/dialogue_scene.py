@@ -191,12 +191,126 @@ def _front_char_right_edge(assets):
 
 def _present(screen, canvas):
     """把 1920x1080 的 canvas 等比例縮放（完整顯示、置中、其餘填黑）到視窗。"""
+    global _last_virtual_surface
+    _last_virtual_surface = canvas
     win_w, win_h = screen.get_size()
+    if (win_w, win_h) == (SCREEN_W, SCREEN_H):
+        screen.blit(canvas, (0, 0))
+        return
     scale = min(win_w / SCREEN_W, win_h / SCREEN_H)
-    size = (max(1, int(SCREEN_W * scale)), max(1, int(SCREEN_H * scale)))
-    scaled = pygame.transform.scale(canvas, size)
+    scaled_w = max(1, int(SCREEN_W * scale))
+    scaled_h = max(1, int(SCREEN_H * scale))
+    offset_x = (win_w - scaled_w) // 2
+    offset_y = (win_h - scaled_h) // 2
+    scaled = pygame.transform.smoothscale(canvas, (scaled_w, scaled_h))
     screen.fill((0, 0, 0))
-    screen.blit(scaled, ((win_w - size[0]) // 2, (win_h - size[1]) // 2))
+    screen.blit(scaled, (offset_x, offset_y))
+
+
+_last_virtual_surface = None
+_virtual_screen = None
+_windowed_size = (1280, 720)
+_is_fullscreen = False
+
+
+def get_virtual_screen():
+    """取得全域共用 1920x1080 虛擬畫布（virtual_screen / canvas）。"""
+    global _virtual_screen
+    if _virtual_screen is None:
+        _virtual_screen = pygame.Surface((SCREEN_W, SCREEN_H)).convert()
+    return _virtual_screen
+
+
+def get_virtual_snapshot():
+    """複製目前虛擬畫布畫面（供彈出說明書、紙條、地圖時作為底圖）。"""
+    src = _last_virtual_surface or _virtual_screen
+    if src is not None and src.get_size() == (SCREEN_W, SCREEN_H):
+        return src.copy()
+    surf = pygame.Surface((SCREEN_W, SCREEN_H)).convert()
+    surf.fill((0, 0, 0))
+    return surf
+
+
+def init_display(caption="Visual Novel Game"):
+    """設定 Windows 高 DPI 感知，並依螢幕可用解析度建立 16:9 的自適應可縮放視窗。"""
+    global _windowed_size, _is_fullscreen
+    import ctypes
+    try:
+        ctypes.windll.user32.SetProcessDPIAware()
+    except Exception:
+        pass
+
+    if not pygame.get_init():
+        pygame.init()
+
+    info = pygame.display.Info()
+    cur_w = info.current_w if info.current_w > 0 else SCREEN_W
+    cur_h = info.current_h if info.current_h > 0 else SCREEN_H
+
+    max_w = min(SCREEN_W, int(cur_w * 0.9))
+    max_h = min(SCREEN_H, int(cur_h * 0.85))
+    scale = min(max_w / SCREEN_W, max_h / SCREEN_H)
+    win_w = max(640, int(SCREEN_W * scale))
+    win_h = max(360, int(SCREEN_H * scale))
+    _windowed_size = (win_w, win_h)
+    _is_fullscreen = False
+
+    screen = pygame.display.set_mode(_windowed_size, pygame.RESIZABLE)
+    pygame.display.set_caption(caption)
+    return screen
+
+
+def toggle_fullscreen():
+    """切換全螢幕 / 視窗模式（F11 或 Alt+Enter）。"""
+    global _is_fullscreen, _windowed_size
+    screen = pygame.display.get_surface()
+    if not _is_fullscreen:
+        if screen is not None:
+            _windowed_size = screen.get_size()
+        _is_fullscreen = True
+        return pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
+    else:
+        _is_fullscreen = False
+        return pygame.display.set_mode(_windowed_size, pygame.RESIZABLE)
+
+
+def handle_window_event(event):
+    """處理視窗縮放與 F11 / Alt+Enter 全螢幕切換事件；若已處理由此回傳 True。"""
+    global _windowed_size
+    if event.type == pygame.KEYDOWN:
+        if event.key == pygame.K_F11 or (
+            event.key == pygame.K_RETURN and (event.mod & pygame.KMOD_ALT)
+        ):
+            toggle_fullscreen()
+            return True
+    elif event.type == pygame.VIDEORESIZE and not _is_fullscreen:
+        w, h = max(320, event.w), max(180, event.h)
+        _windowed_size = (w, h)
+    return False
+
+
+def screen_to_virtual(pos, clamp=False):
+    """將實際視窗滑鼠座標 (mx, my) 轉換為 1920x1080 虛擬座標 (vx, vy)。
+    若點擊落在黑邊區域（超出 0~1920 或 0~1080 範圍）：
+      - clamp=False（預設，用於點擊判定）：回傳 None，忽略該次黑邊點擊
+      - clamp=True（用於 MOUSEMOTION 追蹤）：回傳轉換後的虛擬座標（黑邊外不觸發 hover）"""
+    surface = pygame.display.get_surface()
+    if surface is None:
+        return pos
+    win_w, win_h = surface.get_size()
+    if win_w <= 0 or win_h <= 0:
+        return None
+    scale = min(win_w / SCREEN_W, win_h / SCREEN_H)
+    scaled_w = SCREEN_W * scale
+    scaled_h = SCREEN_H * scale
+    offset_x = (win_w - scaled_w) / 2.0
+    offset_y = (win_h - scaled_h) / 2.0
+    vx = (pos[0] - offset_x) / scale
+    vy = (pos[1] - offset_y) / scale
+    if not (0 <= vx < SCREEN_W and 0 <= vy < SCREEN_H):
+        if not clamp:
+            return None
+    return int(vx), int(vy)
 
 
 def _as_list(value):
@@ -252,8 +366,7 @@ def play_dialogue(json_path, screen=None, events=None, variables=None, bg_overri
         pygame.init()
     screen = screen or pygame.display.get_surface()
     if screen is None:
-        screen = pygame.display.set_mode((SCREEN_W, SCREEN_H),
-                                         pygame.SCALED | pygame.RESIZABLE)
+        screen = init_display()
 
     with open(_resolve_dialogue(json_path), "r", encoding="utf-8") as f:
         scene = json.load(f)
@@ -276,7 +389,7 @@ def play_dialogue(json_path, screen=None, events=None, variables=None, bg_overri
         text_w = SCREEN_W - 2 * TEXT_GAP_LEFT
         text_left = TEXT_GAP_LEFT
 
-    canvas = pygame.Surface((SCREEN_W, SCREEN_H)).convert()  # 視窗不是 1920x1080 時才會用到
+    canvas = get_virtual_screen()
     clock = pygame.time.Clock()
     # Windows 開著中文輸入法時，空白鍵會被輸入法吃掉，收不到 KEYDOWN。
     pygame.key.stop_text_input()
@@ -327,14 +440,18 @@ def play_dialogue(json_path, screen=None, events=None, variables=None, bg_overri
                 if event.type == pygame.QUIT:
                     pygame.quit()
                     sys.exit()
+                elif handle_window_event(event):
+                    continue
                 elif (
                     (event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE)
                     # 備援：輸入法仍攔截時，空白會以 TEXTINPUT 事件送來
                     or (event.type == pygame.TEXTINPUT and event.text == " ")
-                    # 滑鼠左鍵；觸控板輕點、觸控螢幕點一下也是這個事件（滾輪不算）
-                    or (event.type == pygame.MOUSEBUTTONDOWN and event.button == 1)
                 ):
                     advance = True                          # 同一幀不論收到幾個，只算一次
+                elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                    # 滑鼠左鍵；若點在黑邊區域則忽略
+                    if screen_to_virtual(event.pos) is not None:
+                        advance = True
 
             if advance:
                 sfx.play("advance")
@@ -347,10 +464,9 @@ def play_dialogue(json_path, screen=None, events=None, variables=None, bg_overri
             if next_line:
                 break
 
-            # 視窗剛好 1920x1080（含 pygame.SCALED）直接畫；否則畫在 canvas 再等比縮放
+            # 統一繪製在 1920x1080 虛擬畫布 canvas 上，再等比例縮放至實際視窗
             screen = pygame.display.get_surface()
-            direct = screen.get_size() == (SCREEN_W, SCREEN_H)
-            target = screen if direct else canvas
+            target = canvas
 
             # 圖層（下到上）：背景 → 其他角色 → 對話框 → 矮為方 → 文字
             target.fill((0, 0, 0))
@@ -381,8 +497,7 @@ def play_dialogue(json_path, screen=None, events=None, variables=None, bg_overri
                                 (text_left, y))
                 y += text_font.get_linesize() + LINE_SPACING
 
-            if not direct:
-                _present(screen, canvas)
+            _present(screen, canvas)
             pygame.display.flip()
 
         # 這句讀完、按下 SPACE 之後：觸發這句指定的事件（畫面仍停在這句，事件會以它當背景）
@@ -398,7 +513,6 @@ def play_dialogue(json_path, screen=None, events=None, variables=None, bg_overri
 
 
 if __name__ == "__main__":
-    pygame.init()
-    pygame.display.set_mode((SCREEN_W, SCREEN_H), pygame.SCALED | pygame.RESIZABLE)
+    init_display()
     play_dialogue(sys.argv[1] if len(sys.argv) > 1 else "crash")
     pygame.quit()

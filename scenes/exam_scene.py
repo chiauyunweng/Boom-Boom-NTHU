@@ -19,9 +19,11 @@ import sys
 import pygame
 
 from scenes import music, sfx
-from scenes.alchemy_scene import _panel, _to_logical
+from scenes.alchemy_scene import _panel
 from scenes.dialogue_scene import (
-    ASSET_DIR, FONT_ANTIALIAS, SCREEN_H, SCREEN_W, _make_font, _present, _wrap, play_dialogue,
+    ASSET_DIR, FONT_ANTIALIAS, SCREEN_H, SCREEN_W, _make_font, _present, _wrap,
+    get_virtual_screen, get_virtual_snapshot, handle_window_event, init_display,
+    play_dialogue, screen_to_virtual,
 )
 
 # ---------------- 可調整設定 ----------------
@@ -157,21 +159,18 @@ def _folder_surface():
 
 # ---------------- 畫面輸出（相容視窗縮放） ----------------
 class _Frame:
-    """每個 loop 開頭 begin() 取得繪圖目標，結尾 end() 完成縮放與 flip。"""
+    """每個 loop 開頭 begin() 取得 1920x1080 虛擬畫布繪圖目標，結尾 end() 完成等比縮放與 flip。"""
 
     def __init__(self):
-        self.canvas = pygame.Surface((SCREEN_W, SCREEN_H)).convert()
+        self.canvas = get_virtual_screen()
         self.screen = None
-        self.direct = True
 
     def begin(self):
         self.screen = pygame.display.get_surface()
-        self.direct = self.screen.get_size() == (SCREEN_W, SCREEN_H)
-        return self.screen if self.direct else self.canvas
+        return self.canvas
 
     def end(self):
-        if not self.direct:
-            _present(self.screen, self.canvas)
+        _present(self.screen, self.canvas)
         pygame.display.flip()
 
 
@@ -213,9 +212,10 @@ def _show_tle(bg):
     elapsed = 0
     while elapsed < TLE_HOLD_MS:
         elapsed += clock.tick(60)
-        for event in pygame.event.get():      # 只處理關閉視窗，其餘點擊/按鍵一律忽略
+        for event in pygame.event.get():      # 只處理關閉視窗與視窗縮放，其餘點擊/按鍵一律忽略
             if event.type == pygame.QUIT:
                 _quit()
+            handle_window_event(event)
         target = frame.begin()
         target.blit(bg, (0, 0))
         target.blit(surf, surf.get_rect(center=(SCREEN_W // 2, SCREEN_H // 2)))
@@ -365,23 +365,26 @@ def run_find_room():
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 _quit()
+            elif handle_window_event(event):
+                continue
             elif event.type == pygame.MOUSEMOTION:
-                mouse = _to_logical(event.pos)
+                mouse = screen_to_virtual(event.pos, clamp=True)
             elif rules_open:                         # 規則視窗開著：只處理關閉，倒數與座位表狀態都照舊
                 if _is_close_event(event):
                     rules_open = False
                     sfx.play("paper")
-            elif (event.type == pygame.MOUSEBUTTONDOWN and event.button == 1
-                  and RULES_BTN.collidepoint(_to_logical(event.pos))):
-                mouse = _to_logical(event.pos)
-                rules_open = True
-                sfx.play("paper")
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE and open_room is not None:
                 open_room = None
                 sfx.play("cancel")
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                mouse = _to_logical(event.pos)
-                if open_room is None:
+                vpos = screen_to_virtual(event.pos)
+                if vpos is None:
+                    continue
+                mouse = vpos
+                if RULES_BTN.collidepoint(mouse):
+                    rules_open = True
+                    sfx.play("paper")
+                elif open_room is None:
                     for i, d in enumerate(doors):
                         if d.collidepoint(mouse):
                             open_room = i
@@ -541,9 +544,10 @@ def _draw_note(target, font):
 
 
 def _is_close_event(event):
+    if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+        return screen_to_virtual(event.pos) is not None
     return (
-        (event.type == pygame.MOUSEBUTTONDOWN and event.button == 1)
-        or (event.type == pygame.KEYDOWN
+        (event.type == pygame.KEYDOWN
             and event.key in (pygame.K_SPACE, pygame.K_ESCAPE, pygame.K_RETURN))
         or (event.type == pygame.TEXTINPUT and event.text == " ")
     )
@@ -551,11 +555,7 @@ def _is_close_event(event):
 
 def show_note():
     """獨立顯示紙條（對話事件用，不計時），蓋在目前畫面上，關閉後返回。"""
-    screen = pygame.display.get_surface()
-    backdrop = screen.copy()
-    if backdrop.get_size() != (SCREEN_W, SCREEN_H):
-        backdrop = pygame.Surface((SCREEN_W, SCREEN_H)).convert()
-        backdrop.fill((0, 0, 0))
+    backdrop = get_virtual_snapshot()
     frame = _Frame()
     font = _make_font(32)
     clock = pygame.time.Clock()
@@ -566,6 +566,8 @@ def show_note():
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 _quit()
+            if handle_window_event(event):
+                continue
             if _is_close_event(event):
                 sfx.play("paper")
                 return
@@ -748,8 +750,10 @@ def run_computer():
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 _quit()
+            elif handle_window_event(event):
+                continue
             elif event.type == pygame.MOUSEMOTION:
-                mouse = _to_logical(event.pos)
+                mouse = screen_to_virtual(event.pos, clamp=True)
                 continue
 
             result = "pending"
@@ -775,7 +779,10 @@ def run_computer():
                         entry += ch
                         sfx.play("advance")
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                mouse = _to_logical(event.pos)
+                vpos = screen_to_virtual(event.pos)
+                if vpos is None:
+                    continue
+                mouse = vpos
                 if pw_open:
                     if PW_NOTE_BTN.collidepoint(mouse):         # 密碼視窗旁的「查看紙條」；已輸入內容保留
                         note_open = True
@@ -853,10 +860,7 @@ def run_computer():
 def show_item_acquired():
     """獲得地圖：螢幕中央直接顯示 obj_map 大圖（無視窗、標題、文字）。
     點圖片以外的遮罩區、右上角 [X]、或按 Esc / 空白 / Enter 關閉；關閉後才返回。"""
-    screen = pygame.display.get_surface()
-    backdrop = screen.copy()
-    if backdrop.get_size() != (SCREEN_W, SCREEN_H):
-        backdrop = _load_bg(BG_COMPUTER)
+    backdrop = get_virtual_snapshot()
     frame = _Frame()
     clock = pygame.time.Clock()
 
@@ -881,10 +885,14 @@ def show_item_acquired():
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 _quit()
+            elif handle_window_event(event):
+                continue
             elif event.type == pygame.MOUSEMOTION:
-                mouse = _to_logical(event.pos)
+                mouse = screen_to_virtual(event.pos, clamp=True)
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                pos = _to_logical(event.pos)
+                pos = screen_to_virtual(event.pos)
+                if pos is None:
+                    continue
                 if xr.collidepoint(pos) or not img_rect.collidepoint(pos):
                     sfx.play("paper")
                     return
@@ -925,10 +933,13 @@ def _wait_retry(bg, label):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 _quit()
+            elif handle_window_event(event):
+                continue
             elif event.type == pygame.MOUSEMOTION:
-                mouse = _to_logical(event.pos)
+                mouse = screen_to_virtual(event.pos, clamp=True)
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                if btn.collidepoint(_to_logical(event.pos)):
+                pos = screen_to_virtual(event.pos)
+                if pos is not None and btn.collidepoint(pos):
                     sfx.play("pickup")
                     return
             elif event.type == pygame.KEYDOWN and event.key in (pygame.K_RETURN, pygame.K_SPACE):
@@ -969,8 +980,6 @@ def play_exam_chapter():
 
 
 if __name__ == "__main__":
-    pygame.init()
-    pygame.display.set_mode((SCREEN_W, SCREEN_H), pygame.SCALED | pygame.RESIZABLE)
-    pygame.display.set_caption("Exam Test")
+    init_display("Exam Test")
     play_exam_chapter()
     pygame.quit()
