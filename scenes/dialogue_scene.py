@@ -332,6 +332,8 @@ def _prop_sprite(assets, spec):
     img = assets.get(spec["image"])
     if img is None:
         return None
+    if "center" in spec:          # 以「圖案本身」置中：先裁掉透明邊（整張 1920x1080 的素材也能移動）
+        img = img.subsurface(img.get_bounding_rect(min_alpha=1))
     scale = spec.get("scale")
     if scale and scale != 1:
         img = pygame.transform.smoothscale(

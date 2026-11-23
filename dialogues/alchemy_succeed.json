@@ -8,7 +8,10 @@
     "short_and_square"
   ],
   "props": [
-    "obj_bomb"
+    {
+      "image": "obj_bomb",
+      "center": [960, 380]
+    }
   ],
   "lines": [
     {
