@@ -25,6 +25,9 @@ from scenes.dialogue_scene import (
 # ---------------- 可調整設定 ----------------
 TIME_LIMIT_SEC = 120          # 總時間 2 分鐘
 PENALTY_SEC = 10              # 放錯一次扣 10 秒
+PENALTY_TOAST = "順序好像不對……"   # 放錯時畫面下方的提示（後面自動加「（-10 秒）」）
+PENALTY_TOAST_MS = 1800
+TIMER_LABEL = "煉製炸彈"           # 計時器下方的小字
 
 # 正確放入順序（漁父的包包用不到）
 CORRECT_ORDER = [
@@ -37,14 +40,15 @@ CORRECT_ORDER = [
 # 說明書內容（放入順序的謎題）
 MANUAL_TITLE = "實驗裝置使用說明書"
 MANUAL_TEXT = (
-    "本裝置須依下列步驟放入材料，順序錯誤將觸發警報。\n"
+    "本裝置須投入四種材料，順序錯誤將觸發警報。\n"
+    "以下注意事項的排列與投入順序無關：\n"
     "\n"
-    "一、能載人在校園裡奔馳、卻總是被拖吊的，最先放入。\n"
-    "二、遇水會劇烈反應的白色粉末，緊接其後。\n"
-    "三、期末過後被丟棄、散發著酸臭味的東西，放在第三。\n"
-    "四、最後，投入一枚印著熟悉面孔的硬幣。\n"
+    "・遇水會劇烈反應的白色粉末，必須緊跟在兩個輪子之後。\n"
+    "・印著人臉的金屬，不可與白色粉末相鄰。\n"
+    "・期末過後散發酸臭味的東西，不能打頭陣。\n"
+    "・能載人的，永遠比錢先到。\n"
     "\n"
-    "※ 並非所有物品都需要放入。"
+    "※ 五樣東西中有一樣是多餘的——它的主人此刻還在湖邊。"
 )
 MANUAL_RECT = pygame.Rect(0, 0, 1100, 720)
 MANUAL_RECT.center = (SCREEN_W // 2, SCREEN_H // 2)
@@ -144,6 +148,18 @@ def _panel(target, rect, fill, border, width=4, radius=18):
     pygame.draw.rect(surf, fill, surf.get_rect(), border_radius=radius)
     target.blit(surf, rect.topleft)
     pygame.draw.rect(target, border, rect, width, border_radius=radius)
+
+
+def _draw_timer(target, big_font, small_font, remaining_ms):
+    """右上角倒數：黑底框 + 下方小字標籤，最後 10 秒變紅（與上機考相同）。"""
+    secs = max(0, (remaining_ms + 999) // 1000)
+    color = WARN_COLOR if secs <= 10 else TEXT_COLOR
+    t = big_font.render(f"{secs // 60:02d}:{secs % 60:02d}", FONT_ANTIALIAS, color)
+    r = t.get_rect(topright=(SCREEN_W - 50, 40))
+    _panel(target, r.inflate(40, 20), (0, 0, 0, 150), (180, 180, 255), 3, 12)
+    target.blit(t, r)
+    lab = small_font.render(TIMER_LABEL, FONT_ANTIALIAS, HINT_COLOR)
+    target.blit(lab, lab.get_rect(topright=(r.right, r.bottom + 22)))
 
 
 def _draw_manual_icon(target, font, hover):
@@ -329,13 +345,13 @@ def run_alchemy(items=None):
             if wrong_count == 1:
                 play_dialogue("alchemy_wrong_procedure")   # 第一句會響警報（JSON 的 "sfx": "alarm"）
                 music.play("tension")                      # 劇情把音樂停掉了，回到小遊戲時重新播放
-            else:
-                sfx.play("alarm")
                 clock.tick()           # 丟掉劇情期間累積的時間
                 pygame.key.stop_text_input()
                 pygame.event.clear()
+            else:
+                sfx.play("alarm")
             remaining_ms -= PENALTY_SEC * 1000
-            penalty_flash_ms = 1500
+            penalty_flash_ms = PENALTY_TOAST_MS
             placed.clear()
             if remaining_ms <= 0:
                 sfx.play("timeout")
@@ -403,19 +419,19 @@ def run_alchemy(items=None):
         _draw_manual_icon(target, font,
                           not dragging and not manual_open and MANUAL_ICON_RECT.collidepoint(mouse))
 
-        # 倒數計時（右上角）
-        secs = max(0, (remaining_ms + 999) // 1000)
-        t_color = WARN_COLOR if secs <= 20 else TEXT_COLOR
-        timer = big_font.render(f"{secs // 60:02d}:{secs % 60:02d}", FONT_ANTIALIAS, t_color)
-        target.blit(timer, timer.get_rect(topright=(SCREEN_W - 50, SLOT_TOP)))
-        if penalty_flash_ms:
-            pen = big_font.render(f"-{PENALTY_SEC} 秒", FONT_ANTIALIAS, WARN_COLOR)
-            target.blit(pen, pen.get_rect(topright=(SCREEN_W - 50, SLOT_TOP + 64)))
+        # 倒數計時（右上角，和上機考相同樣式）
+        _draw_timer(target, big_font, font, remaining_ms)
 
-        # 操作提示
-        hint = font.render("將物品拖曳到實驗裝置中，依照說明書的順序放入（點擊說明書可閱讀）",
-                           FONT_ANTIALIAS, HINT_COLOR)
-        target.blit(hint, hint.get_rect(midbottom=(SCREEN_W // 2, SCREEN_H - 50)))
+        # 操作提示；放錯時改顯示紅框提示（和上機考點錯座位相同樣式）
+        if penalty_flash_ms:
+            pen = big_font.render(f"{PENALTY_TOAST}（-{PENALTY_SEC} 秒）", FONT_ANTIALIAS, WARN_COLOR)
+            pr = pen.get_rect(center=(SCREEN_W // 2, SCREEN_H - 70))
+            _panel(target, pr.inflate(50, 24), (0, 0, 0, 210), WARN_COLOR, 3, 12)
+            target.blit(pen, pr)
+        else:
+            hint = font.render("將物品拖曳到實驗裝置中，依照說明書的順序放入（點擊說明書可閱讀）",
+                               FONT_ANTIALIAS, HINT_COLOR)
+            target.blit(hint, hint.get_rect(midbottom=(SCREEN_W // 2, SCREEN_H - 50)))
 
         # 拖曳中的物品畫在最上層
         if dragging:
@@ -425,7 +441,7 @@ def run_alchemy(items=None):
 
         if manual_open:
             _draw_manual(target, big_font, font)
-            target.blit(timer, timer.get_rect(topright=(SCREEN_W - 50, SLOT_TOP)))  # 閱讀時仍看得到時間
+            _draw_timer(target, big_font, font, remaining_ms)   # 閱讀時仍看得到時間
 
         _present(screen, canvas)
         pygame.display.flip()

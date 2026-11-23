@@ -13,11 +13,12 @@ import pygame
 from scenes import sfx
 
 BGM_DIR = sfx.SFX_DIR.parent / "bgm"
-VOLUME = 0.2                # 背景音樂音量 0~1（音效音量在 sfx.VOLUME）
+VOLUME = 0.2                # 背景音樂預設音量 0~1（音效音量在 sfx.VOLUME；遊戲中可用左上角音量鈕調整）
 FADE_IN_MS = 800
 FADE_OUT_MS = 600
 
 _current = None
+_volume = VOLUME
 
 
 def _find(name):
@@ -45,11 +46,19 @@ def play(name, fade_ms=FADE_IN_MS):
         return
     try:
         pygame.mixer.music.load(str(path))
-        pygame.mixer.music.set_volume(VOLUME)
+        pygame.mixer.music.set_volume(_volume)
         pygame.mixer.music.play(loops=-1, fade_ms=fade_ms)
         _current = name
     except pygame.error as e:
         print(f"[music] 無法播放 {path}：{e}")
+
+
+def set_volume(level):
+    """調整背景音樂音量（0~1），正在播的音樂立即改變。"""
+    global _volume
+    _volume = min(1.0, max(0.0, level))
+    if pygame.mixer.get_init():
+        pygame.mixer.music.set_volume(_volume)
 
 
 def stop(fade_ms=FADE_OUT_MS):

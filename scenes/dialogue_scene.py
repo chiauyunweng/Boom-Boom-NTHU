@@ -17,7 +17,7 @@ from pathlib import Path
 
 import pygame
 
-from scenes import music, sfx
+from scenes import music, sfx, volume
 
 # ---------------- 路徑 ----------------
 BASE_DIR = Path(__file__).resolve().parent.parent   # your_game_project/
@@ -196,6 +196,7 @@ def _present(screen, canvas):
     win_w, win_h = screen.get_size()
     if (win_w, win_h) == (SCREEN_W, SCREEN_H):
         screen.blit(canvas, (0, 0))
+        volume.draw_overlay(screen, 1, (0, 0))    # 左上角音量鈕（畫在視窗上，不弄髒 canvas）
         return
     scale = min(win_w / SCREEN_W, win_h / SCREEN_H)
     scaled_w = max(1, int(SCREEN_W * scale))
@@ -205,6 +206,7 @@ def _present(screen, canvas):
     scaled = pygame.transform.smoothscale(canvas, (scaled_w, scaled_h))
     screen.fill((0, 0, 0))
     screen.blit(scaled, (offset_x, offset_y))
+    volume.draw_overlay(screen, scale, (offset_x, offset_y))
 
 
 _last_virtual_surface = None
@@ -275,8 +277,11 @@ def toggle_fullscreen():
 
 
 def handle_window_event(event):
-    """處理視窗縮放與 F11 / Alt+Enter 全螢幕切換事件；若已處理由此回傳 True。"""
+    """處理視窗縮放、F11 / Alt+Enter 全螢幕切換與左上角音量鈕；若已處理由此回傳 True。"""
     global _windowed_size
+    if event.type in (pygame.MOUSEBUTTONDOWN, pygame.MOUSEBUTTONUP, pygame.MOUSEMOTION):
+        if volume.handle_event(event, screen_to_virtual(event.pos)):
+            return True
     if event.type == pygame.KEYDOWN:
         if event.key == pygame.K_F11 or (
             event.key == pygame.K_RETURN and (event.mod & pygame.KMOD_ALT)

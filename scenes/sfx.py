@@ -14,7 +14,7 @@ from pathlib import Path
 import pygame
 
 SFX_DIR = Path(__file__).resolve().parent.parent / "assets" / "sfx"
-VOLUME = 0.5                  # 全部音效的總音量 0~1
+VOLUME = 0.5                  # 全部音效的預設總音量 0~1（遊戲中可用左上角音量鈕調整）
 
 # 合成音效：每段為 (波形, 起始頻率, 結束頻率, 長度 ms, 音量)；波形 square / sine / noise / rest
 # noise 的頻率代表雜訊取樣率（低 = 低沉轟隆，高 = 沙沙聲；0 = 預設 8000），且音量會漸弱
@@ -55,6 +55,7 @@ SYNTH = {
 
 _cache = {}
 _disabled = False
+_volume = VOLUME
 
 
 def _ready():
@@ -100,7 +101,7 @@ def _synth(segments):
             else:
                 v = 0.0
             env = min(1.0, i / attack, (n - i) / release)
-            s = int(32767 * VOLUME * vol * env * v)
+            s = int(32767 * vol * env * v)          # 總音量用 Sound.set_volume 控制，可即時調整
             buf.extend([s] * channels)
     return pygame.mixer.Sound(buffer=buf.tobytes())
 
@@ -110,9 +111,7 @@ def _load(name):
         path = SFX_DIR / f"{name}{ext}"
         if path.exists():
             try:
-                snd = pygame.mixer.Sound(str(path))
-                snd.set_volume(VOLUME)
-                return snd
+                return pygame.mixer.Sound(str(path))
             except pygame.error as e:
                 print(f"[sfx] 讀不到 {path}：{e}")
     if name in SYNTH:
@@ -121,15 +120,31 @@ def _load(name):
     return None
 
 
+def _get(name):
+    if name not in _cache:
+        _cache[name] = _load(name)
+        if _cache[name]:
+            _cache[name].set_volume(_volume)
+    return _cache[name]
+
+
+def set_volume(level):
+    """調整全部音效的總音量（0~1），正在播的也會立即改變。"""
+    global _volume
+    _volume = min(1.0, max(0.0, level))
+    for snd in _cache.values():
+        if snd:
+            snd.set_volume(_volume)
+
+
 def play(name):
     """播放音效；同一個音效若還在播，先停掉再重播（避免重疊）。"""
     if not _ready():
         return
-    if name not in _cache:
-        _cache[name] = _load(name)
-    if _cache[name]:
-        _cache[name].stop()
-        _cache[name].play()
+    snd = _get(name)
+    if snd:
+        snd.stop()
+        snd.play()
 
 
 def stop(name):
@@ -143,5 +158,4 @@ def preload():
     if not _ready():
         return
     for name in SYNTH:
-        if name not in _cache:
-            _cache[name] = _load(name)
+        _get(name)
