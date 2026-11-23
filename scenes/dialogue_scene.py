@@ -54,6 +54,10 @@ HINT_COLOR = (190, 190, 190)
 HINT_MARGIN_RIGHT = 60        # 提示文字右緣距畫面（＝對話框）右緣的內邊距
 HINT_MARGIN_BOTTOM = 40       # 提示文字下緣距畫面（＝對話框）下緣的內邊距；提示固定在對話框右下角
 
+SKIP_RECT = pygame.Rect(SCREEN_W - 24 - 200, 24, 200, 72)   # 右上角「跳過」按鈕（左上角是音量鈕）
+SKIP_LABEL = "跳過 ▶▶"
+SKIP_KEY = pygame.K_s                                      # 鍵盤 S 也可以跳過
+
 FRONT_CHAR = "short_and_square"                    # 位於對話框上方圖層的角色（矮為方）
 DEFAULT_CHARS = ["short_and_square", "tall_and_round"]
 # --------------------------------------------
@@ -362,13 +366,36 @@ def _apply_vars(text, variables):
     return text
 
 
+def _draw_skip(target, font, hover):
+    box = pygame.Surface(SKIP_RECT.size, pygame.SRCALPHA)
+    pygame.draw.rect(box, (0, 0, 0, 170), box.get_rect(), border_radius=14)
+    pygame.draw.rect(box, SPEAKER_COLOR if hover else (180, 180, 255), box.get_rect(), 3, border_radius=14)
+    label = font.render(SKIP_LABEL, FONT_ANTIALIAS, SPEAKER_COLOR if hover else TEXT_COLOR)
+    box.blit(label, label.get_rect(center=box.get_rect().center))
+    target.blit(box, SKIP_RECT)
+
+
+def _skip_rest(lines, events):
+    """跳過剩下的台詞：不播音效，但背景音樂切到最後的狀態，且事件（紙條、說明書等線索）照樣觸發。"""
+    for line in lines:
+        if line.get("bgm"):
+            music.play(line["bgm"])
+        for event_name in _as_list(line.get("event")):
+            callback = (events or {}).get(event_name)
+            if callback is not None:
+                callback()
+                pygame.key.stop_text_input()
+                pygame.event.clear()
+
+
 def play_dialogue(json_path, screen=None, events=None, variables=None, bg_override=None):
     """播放一段對話 JSON。
     events：{事件名: 函式}。JSON 某句寫 "event": "名稱"（或 ["a", "b"]），
             玩家讀完該句、按下 SPACE 後會先呼叫該函式（例如彈出紙條），再接下一句。
     variables：{名稱: 值}。文字裡的 {名稱} 會被換掉，例如 "還剩 {remaining} 次機會"。
     JSON 每句還可寫 "sfx": "名稱"（該句開始時播音效）、"bgm": "名稱"（換背景音樂，"none" = 停止）；
-    整段 JSON 最上層也可寫 "bgm"，在開頭生效。"""
+    整段 JSON 最上層也可寫 "bgm"，在開頭生效。
+    右上角的「跳過」（或按 S）會直接結束這段對話，但剩下台詞的事件仍會觸發。"""
     if not pygame.get_init():
         pygame.init()
     screen = screen or pygame.display.get_surface()
@@ -387,6 +414,8 @@ def play_dialogue(json_path, screen=None, events=None, variables=None, bg_overri
 
     speaker_font = _make_font(SPEAKER_SIZE)
     text_font = _make_font(TEXT_SIZE)
+    skip_font = _make_font(32)
+    skip_hover = False
     hint_surf = (_make_font(HINT_SIZE).render(HINT_TEXT, FONT_ANTIALIAS, HINT_COLOR)
                  if SHOW_HINT else None)
 
@@ -402,7 +431,8 @@ def play_dialogue(json_path, screen=None, events=None, variables=None, bg_overri
     pygame.key.stop_text_input()
     pygame.event.clear()  # 清掉上一個畫面殘留的按鍵事件
 
-    for line in scene["lines"]:
+    lines = scene["lines"]
+    for index, line in enumerate(lines):
         if line.get("bgm"):
             music.play(line["bgm"])
         for sfx_name in _as_list(line.get("sfx")):
@@ -437,6 +467,7 @@ def play_dialogue(json_path, screen=None, events=None, variables=None, bg_overri
 
         elapsed_ms = 0
         next_line = False
+        skip = False
         while not next_line:
             dt = clock.tick(60)
             elapsed_ms += dt
@@ -455,10 +486,21 @@ def play_dialogue(json_path, screen=None, events=None, variables=None, bg_overri
                     or (event.type == pygame.TEXTINPUT and event.text == " ")
                 ):
                     advance = True                          # 同一幀不論收到幾個，只算一次
+                elif event.type == pygame.KEYDOWN and event.key == SKIP_KEY:
+                    skip = True
+                elif event.type == pygame.MOUSEMOTION:
+                    vpos = screen_to_virtual(event.pos)
+                    skip_hover = bool(vpos) and SKIP_RECT.collidepoint(vpos)
                 elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                     # 滑鼠左鍵；若點在黑邊區域則忽略
-                    if screen_to_virtual(event.pos) is not None:
+                    vpos = screen_to_virtual(event.pos)
+                    if vpos is not None and SKIP_RECT.collidepoint(vpos):
+                        skip = True
+                    elif vpos is not None:
                         advance = True
+
+            if skip:
+                break
 
             if advance:
                 sfx.play("advance")
@@ -504,8 +546,16 @@ def play_dialogue(json_path, screen=None, events=None, variables=None, bg_overri
                                 (text_left, y))
                 y += text_font.get_linesize() + LINE_SPACING
 
+            _draw_skip(target, skip_font, skip_hover)
             _present(screen, canvas)
             pygame.display.flip()
+
+        if skip:
+            sfx.play("advance")
+            for sfx_name in _as_list(line.get("sfx")):
+                sfx.stop(sfx_name)                          # 例如警報聲，跳過時一起停掉
+            _skip_rest(lines[index:], events)
+            break
 
         # 這句讀完、按下 SPACE 之後：觸發這句指定的事件（畫面仍停在這句，事件會以它當背景）
         for event_name in _as_list(line.get("event")):
