@@ -1,0 +1,9 @@
+[project]
+name = "boom-boom-nthu"
+version = "0.1.0"
+description = "Boom-Boom-NTHU - 清大視覺小說解謎小遊戲（上機考、成功湖釣魚、化學館煉金）"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "pygame>=2.6.1",
+]
