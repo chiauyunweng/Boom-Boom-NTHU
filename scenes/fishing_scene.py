@@ -235,6 +235,7 @@ class FishingGame:
     # ---------- 第二階段 ----------
     def on_success(self):
         if not self.items:            # 物品已釣完：這次成功就直接結束遊戲
+            sfx.stop_fisherman_sound()
             self.done = True
             return
         item = random.choice(self.items)
@@ -244,6 +245,8 @@ class FishingGame:
         self._build_item_surfs(item)
         self.state = ITEM
         sfx.play("catch")
+        if item["id"] == "fisherman_bag" or item["name"] in ("漁父的包包", "漁夫的包包"):
+            sfx.play_fisherman_sound(3, f"釣魚關卡釣起「{item['name']}」")
 
     def on_fail(self):
         self.fail_timer = pygame.time.get_ticks()
@@ -397,6 +400,7 @@ def play_fishing(screen=None, show_instructions=True):
 
         game.update(dt, space)
         if game.done:
+            sfx.stop_fisherman_sound()
             break
 
         screen = pygame.display.get_surface()

@@ -14,6 +14,11 @@ from pathlib import Path
 import pygame
 
 SFX_DIR = Path(__file__).resolve().parent.parent / "assets" / "sfx"
+BGM_DIR = Path(__file__).resolve().parent.parent / "assets" / "bgm"
+ASSET_ROOT = Path(__file__).resolve().parent.parent / "assets"
+FISHERMAN_SOUNDS = [f"fisherman_sound_{i}" for i in range(1, 5)]
+FISHERMAN_VOLUME = 1.0        # 漁夫語音音量固定為 1.0（最大音量，為 BGM 0.1 的 10 倍大聲）
+FISHERMAN_BGM_DUCK_VOLUME = 0.1   # 播放漁夫語音時，確保 BGM 壓在 <= 0.1（10 倍音量比）
 VOLUME = 0.5                  # 全部音效的預設總音量 0~1（遊戲中可用左上角音量鈕調整）
 
 # 合成音效：每段為 (波形, 起始頻率, 結束頻率, 長度 ms, 音量)；波形 square / sine / noise / rest
@@ -129,12 +134,12 @@ def _get(name):
 
 
 def set_volume(level):
-    """調整全部音效的總音量（0~1），正在播的也會立即改變。"""
+    """調整全部音效的總音量（0~1），正在播的也會立即改變；漁夫語音維持最大音量 1.0。"""
     global _volume
     _volume = min(1.0, max(0.0, level))
-    for snd in _cache.values():
+    for name, snd in _cache.items():
         if snd:
-            snd.set_volume(_volume)
+            snd.set_volume(FISHERMAN_VOLUME if name in FISHERMAN_SOUNDS else _volume)
 
 
 def play(name):
@@ -153,9 +158,130 @@ def stop(name):
         snd.stop()
 
 
+_fisherman_paths = {}
+_fisherman_channel = None
+
+
+def _load_fisherman_sounds():
+    """預載 bgm/fisherman_sound_1.mp3 ~ bgm/fisherman_sound_4.mp3，加上檔案不存在防呆處理、音量設定與 Debug 訊息。"""
+    if not _ready():
+        print("[DEBUG][Fisherman Sound][ERROR] pygame.mixer 未初始化或音效停用，無法載入漁夫語音")
+        return []
+    loaded = []
+    newly_loaded = []
+    for name in FISHERMAN_SOUNDS:
+        if name in _cache:
+            if _cache[name] is not None:
+                loaded.append((name, _cache[name]))
+            continue
+        snd = None
+        found_path = None
+        for directory in (BGM_DIR, SFX_DIR, ASSET_ROOT):
+            for ext in (".mp3", ".wav", ".ogg"):
+                path = directory / f"{name}{ext}"
+                if path.exists():
+                    found_path = path
+                    try:
+                        snd = pygame.mixer.Sound(str(path))
+                        snd.set_volume(FISHERMAN_VOLUME)
+                        _fisherman_paths[name] = path
+                        newly_loaded.append(path)
+                    except pygame.error as e:
+                        print(f"[DEBUG][Fisherman Sound][ERROR] 載入失敗 {path}：{e}")
+                        snd = None
+                    break
+            if snd is not None:
+                break
+        if snd is None and found_path is None:
+            print(f"[DEBUG][Fisherman Sound][WARN] 找不到音檔：{name}.mp3（已搜尋 {BGM_DIR}、{SFX_DIR}、{ASSET_ROOT}）")
+        _cache[name] = snd
+        if snd is not None:
+            loaded.append((name, snd))
+    if newly_loaded:
+        paths_str = ", ".join(str(p) for p in newly_loaded)
+        print(f"[DEBUG][Fisherman Sound] 成功載入 {len(loaded)}/{len(FISHERMAN_SOUNDS)} 個漁夫語音檔 | 路徑: {paths_str}")
+    return loaded
+
+
+def stop_fisherman_sound():
+    """立即停止所有正在播放中的漁夫語音（以及專屬 Channel），避免語音殘留到結算／過關／失敗對話中。"""
+    global _fisherman_channel
+    if not pygame.mixer.get_init():
+        return
+    if _fisherman_channel is not None:
+        try:
+            _fisherman_channel.stop()
+        except pygame.error:
+            pass
+        _fisherman_channel = None
+    for name in FISHERMAN_SOUNDS:
+        snd = _cache.get(name)
+        if snd is not None:
+            snd.stop()
+
+
+def play_fisherman_sound(index=3, source="未指定來源"):
+    """播放指定編號（1~4）的漁夫語音（例如釣魚關卡固定播放 fisherman_sound_3.mp3）。"""
+    global _fisherman_channel
+    if not _ready():
+        print(f"[DEBUG][Fisherman Sound][ERROR] 觸發來源: {source} | 播放失敗: pygame.mixer 未就緒")
+        return
+    _load_fisherman_sounds()
+    target_name = f"fisherman_sound_{index}" if isinstance(index, int) else Path(str(index)).stem
+    target_snd = _cache.get(target_name)
+    if target_snd is None:
+        print(f"[DEBUG][Fisherman Sound][ERROR] 觸發來源: {source} | 播放失敗: 找不到指定音檔 {target_name}.mp3")
+        return
+    stop_fisherman_sound()
+    if pygame.mixer.get_init() and pygame.mixer.music.get_busy():
+        cur_bgm_vol = pygame.mixer.music.get_volume()
+        if cur_bgm_vol > FISHERMAN_BGM_DUCK_VOLUME:
+            pygame.mixer.music.set_volume(FISHERMAN_BGM_DUCK_VOLUME)
+    bgm_vol = round(pygame.mixer.music.get_volume(), 2) if pygame.mixer.get_init() else 0.1
+    target_snd.set_volume(FISHERMAN_VOLUME)
+    vol = round(target_snd.get_volume(), 2)
+    file_path = _fisherman_paths.get(target_name)
+    file_label = file_path.name if file_path else f"{target_name}.mp3"
+    _fisherman_channel = target_snd.play()
+    if _fisherman_channel is None:
+        print(f"[DEBUG][Fisherman Sound][ERROR] 觸發來源: {source} | 音檔: {file_label} | 播放失敗: 無可用混音聲道 (channel is None)")
+    else:
+        print(f"[DEBUG][Fisherman Sound] 觸發來源: {source} | 固定播放音檔: {file_label} | 語音音量: {vol} (BGM音量: {bgm_vol}, 10x比例)")
+
+
+def play_random_fisherman_sound(source="未指定來源"):
+    """隨機挑選 fisherman_sound_1 ~ 4 之一播放；播放前先停止尚未播完的漁夫語音，並印出詳細 Debug 訊息。"""
+    global _fisherman_channel
+    if not _ready():
+        print(f"[DEBUG][Fisherman Sound][ERROR] 觸發來源: {source} | 播放失敗: pygame.mixer 未就緒")
+        return
+    sounds = _load_fisherman_sounds()
+    if not sounds:
+        print(f"[DEBUG][Fisherman Sound][ERROR] 觸發來源: {source} | 播放失敗: 無可用的漁夫語音檔")
+        return
+    stop_fisherman_sound()
+    # 確保播放漁夫語音時，BGM 維持在 0.1（與語音 1.0 呈 10 倍音量比例）
+    if pygame.mixer.get_init() and pygame.mixer.music.get_busy():
+        cur_bgm_vol = pygame.mixer.music.get_volume()
+        if cur_bgm_vol > FISHERMAN_BGM_DUCK_VOLUME:
+            pygame.mixer.music.set_volume(FISHERMAN_BGM_DUCK_VOLUME)
+    bgm_vol = round(pygame.mixer.music.get_volume(), 2) if pygame.mixer.get_init() else 0.1
+    chosen_name, chosen_snd = random.choice(sounds)
+    chosen_snd.set_volume(FISHERMAN_VOLUME)
+    vol = round(chosen_snd.get_volume(), 2)
+    file_path = _fisherman_paths.get(chosen_name)
+    file_label = file_path.name if file_path else f"{chosen_name}.mp3"
+    _fisherman_channel = chosen_snd.play()
+    if _fisherman_channel is None:
+        print(f"[DEBUG][Fisherman Sound][ERROR] 觸發來源: {source} | 音檔: {file_label} | 播放失敗: 無可用混音聲道 (channel is None)")
+    else:
+        print(f"[DEBUG][Fisherman Sound] 觸發來源: {source} | 隨機播放音檔: {file_label} | 語音音量: {vol} (BGM音量: {bgm_vol}, 10x比例)")
+
+
 def preload():
     """遊戲開始時先把所有音效準備好，避免第一次播放時卡頓。"""
     if not _ready():
         return
     for name in SYNTH:
         _get(name)
+    _load_fisherman_sounds()

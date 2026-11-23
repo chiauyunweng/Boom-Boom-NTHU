@@ -13,7 +13,7 @@ import pygame
 from scenes import sfx
 
 BGM_DIR = sfx.SFX_DIR.parent / "bgm"
-VOLUME = 0.2                # 背景音樂預設音量 0~1（音效音量在 sfx.VOLUME；遊戲中可用左上角音量鈕調整）
+VOLUME = 0.1                # 背景音樂預設音量 0~1（漁夫語音為 1.0，為 BGM 的 10 倍大聲）
 FADE_IN_MS = 800
 FADE_OUT_MS = 600
 

@@ -402,6 +402,9 @@ def play_dialogue(json_path, screen=None, events=None, variables=None, bg_overri
     if screen is None:
         screen = init_display()
 
+    # 進入任何對話（包含結算、過關、Game Over 失敗對話）時，第一時間停止仍在播放中的漁夫語音
+    sfx.stop_fisherman_sound()
+
     with open(_resolve_dialogue(json_path), "r", encoding="utf-8") as f:
         scene = json.load(f)
 

@@ -269,6 +269,7 @@ def run_alchemy(items=None):
     success_ms = None           # 成功後停留一下再結束
     manual_open = False         # 閱讀說明書時倒數照常進行
     wrong_count = 0             # 放錯次數
+    fisherman_bag_count = 0     # 「漁父的包包」（漁夫的包包）被放入裝置的次數（關卡重開時歸零）
     last_tick = None            # 最後 10 秒每秒響一次
 
     music.play("tension")
@@ -282,6 +283,7 @@ def run_alchemy(items=None):
         penalty_flash_ms = max(0, penalty_flash_ms - dt)
 
         if remaining_ms <= 0:
+            sfx.stop_fisherman_sound()
             sfx.play("timeout")
             return False
         secs_left = (remaining_ms + 999) // 1000
@@ -291,9 +293,11 @@ def run_alchemy(items=None):
         if success_ms is not None:
             success_ms -= dt
             if success_ms <= 0:
+                sfx.stop_fisherman_sound()
                 return True
 
         wrong = False
+        fisherman_voice_played = False
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 _quit()
@@ -325,10 +329,16 @@ def run_alchemy(items=None):
             elif event.type == pygame.MOUSEBUTTONUP and event.button == 1 and dragging:
                 mouse = screen_to_virtual(event.pos, clamp=True)
                 if DEVICE_RECT.collidepoint(mouse):
+                    if dragging in ("漁父的包包", "漁夫的包包"):
+                        fisherman_bag_count += 1
+                        if fisherman_bag_count >= 2:
+                            sfx.play_random_fisherman_sound(f"化學館第 {fisherman_bag_count} 次放入「{dragging}」")
+                            fisherman_voice_played = True
                     step = len(placed)
                     if step < len(CORRECT_ORDER) and dragging == CORRECT_ORDER[step]:
                         placed.append(dragging)
                         if len(placed) == len(CORRECT_ORDER):
+                            sfx.stop_fisherman_sound()
                             success_ms = 1200
                             sfx.play("success")
                         else:
@@ -341,6 +351,7 @@ def run_alchemy(items=None):
 
         if wrong:
             # 放錯：扣時間，物品全部退回；只有第一次放錯會播放警報劇情（期間不計時）
+            # 若這次是第 2 次（含）以上放入「漁父的包包」，只播漁夫語音，不播放 alarm 警報聲
             wrong_count += 1
             if wrong_count == 1:
                 play_dialogue("alchemy_wrong_procedure")   # 第一句會響警報（JSON 的 "sfx": "alarm"）
@@ -348,12 +359,13 @@ def run_alchemy(items=None):
                 clock.tick()           # 丟掉劇情期間累積的時間
                 pygame.key.stop_text_input()
                 pygame.event.clear()
-            else:
+            elif not fisherman_voice_played:
                 sfx.play("alarm")
             remaining_ms -= PENALTY_SEC * 1000
             penalty_flash_ms = PENALTY_TOAST_MS
             placed.clear()
             if remaining_ms <= 0:
+                sfx.stop_fisherman_sound()
                 sfx.play("timeout")
                 return False
             continue
@@ -452,9 +464,11 @@ def play_alchemy_chapter(items=None):
     play_dialogue("alchemy_find_clue")
     play_dialogue("alchemy_device", events={"show_manual": show_manual})
     if run_alchemy(items):
+        sfx.stop_fisherman_sound()
         play_dialogue("alchemy_succeed")
         play_dialogue("ending_succeed")
         return True
+    sfx.stop_fisherman_sound()
     play_dialogue("alchemy_failed")
     return False
 
