@@ -12,9 +12,10 @@ import sys
 
 import pygame
 
+import achievements
 from scenes import music, sfx
 from scenes.dialogue_scene import (
-    ASSET_DIR, FONT_ANTIALIAS, SCREEN_H, SCREEN_W, _make_font, _present,
+    ASSET_DIR, FONT_ANTIALIAS, SCREEN_H, SCREEN_W, _make_font, _present, _wrap,
     get_virtual_screen, handle_window_event, init_display, screen_to_virtual,
 )
 
@@ -123,15 +124,17 @@ def _draw_buttons(canvas, font, labels, rects, selected, t):
             canvas.blit(arrow, arrow.get_rect(midright=(rect.left - 20 + dx, rect.centery)))
 
 
-def _menu_loop(draw_scene, labels, rects, on_choose_sfx="success"):
+def _menu_loop(draw_scene, labels, rects, on_choose_sfx="success",
+               fade_in=True, no_fade_indices=None, initial_selected=0):
     """通用選單迴圈：draw_scene(canvas, t) 畫背景與內容，回傳被選中的按鈕 index。"""
+    no_fade_indices = set(no_fade_indices or ())
     clock = pygame.time.Clock()
     font = _make_font(BUTTON_SIZE)
     canvas = get_virtual_screen()
     black = pygame.Surface((SCREEN_W, SCREEN_H))
     black.fill((0, 0, 0))
-    selected = 0
-    elapsed = 0
+    selected = initial_selected % len(labels)
+    elapsed = 0 if fade_in else FADE_MS
     pygame.event.clear()
 
     while True:
@@ -178,9 +181,168 @@ def _menu_loop(draw_scene, labels, rects, on_choose_sfx="success"):
         pygame.display.flip()
 
         if chosen is not None:
+            if chosen in no_fade_indices:
+                sfx.play("paper")
+                return chosen
             sfx.play(on_choose_sfx if chosen == 0 else "cancel")
             _fade_out(canvas, clock)
             return chosen
+
+
+def _show_achievements_modal(draw_scene):
+    """主畫面「成就」彈窗：展示所有成就（已解鎖彩色高亮／未解鎖灰階上鎖）並支援滾動與關閉。"""
+    clock = pygame.time.Clock()
+    canvas = get_virtual_screen()
+    header_font = _make_font(48)
+    title_font = _make_font(48)
+    body_font = _make_font(32)
+    items = achievements.get_all()
+    unlocked_cnt = sum(1 for a in items if a["unlocked"])
+
+    panel = pygame.Rect(0, 0, 1280, 790)
+    panel.center = (SCREEN_W // 2, SCREEN_H // 2)
+    close_x = pygame.Rect(0, 0, 56, 56)
+    close_x.topright = (panel.right - 24, panel.top + 24)
+    close_btn = pygame.Rect(0, 0, 260, 72)
+    close_btn.midbottom = (panel.centerx, panel.bottom - 28)
+
+    list_area = pygame.Rect(panel.left + 48, panel.top + 132, panel.width - 96, panel.height - 252)
+    card_h, card_gap = 156, 20
+    content_h = max(0, len(items) * (card_h + card_gap) - card_gap)
+    max_scroll = max(0, content_h - list_area.height)
+    scroll_y = 0
+
+    shade = pygame.Surface((SCREEN_W, SCREEN_H), pygame.SRCALPHA)
+    shade.fill((0, 0, 0, 185))
+    mouse = (0, 0)
+    elapsed = 0
+    pygame.event.clear()
+
+    while True:
+        dt = clock.tick(60)
+        elapsed += dt
+        t = elapsed / 1000
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                _quit()
+            if handle_window_event(event):
+                continue
+            if event.type == pygame.MOUSEMOTION:
+                mouse = screen_to_virtual(event.pos, clamp=True)
+            elif event.type == pygame.MOUSEWHEEL:
+                scroll_y = max(0, min(max_scroll, scroll_y - event.y * 48))
+            elif event.type == pygame.KEYDOWN:
+                if event.key in (pygame.K_ESCAPE, pygame.K_RETURN, pygame.K_SPACE):
+                    sfx.play("cancel")
+                    return
+                elif event.key in (pygame.K_DOWN, pygame.K_s):
+                    scroll_y = min(max_scroll, scroll_y + 48)
+                elif event.key in (pygame.K_UP, pygame.K_w):
+                    scroll_y = max(0, scroll_y - 48)
+            elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                pos = screen_to_virtual(event.pos)
+                if pos is None:
+                    continue
+                if close_x.collidepoint(pos) or close_btn.collidepoint(pos) or not panel.collidepoint(pos):
+                    sfx.play("cancel")
+                    return
+
+        draw_scene(canvas, t)
+        canvas.blit(shade, (0, 0))
+
+        # 彈窗主體
+        box = pygame.Surface(panel.size, pygame.SRCALPHA)
+        pygame.draw.rect(box, (18, 22, 38, 244), box.get_rect(), border_radius=22)
+        pygame.draw.rect(box, BTN_BORDER, box.get_rect(), 4, border_radius=22)
+        canvas.blit(box, panel)
+
+        # 標題與解鎖統計
+        hdr = header_font.render("成就列表", FONT_ANTIALIAS, TITLE_COLOR)
+        canvas.blit(hdr, (panel.left + 52, panel.top + 32))
+        prog = body_font.render(f"已解鎖：{unlocked_cnt} / {len(items)}", FONT_ANTIALIAS, SUB_COLOR)
+        canvas.blit(prog, prog.get_rect(midright=(close_x.left - 28, panel.top + 56)))
+        pygame.draw.line(canvas, (90, 95, 130),
+                         (panel.left + 44, panel.top + 104), (panel.right - 44, panel.top + 104), 3)
+
+        # 右上角 [X]
+        hx = close_x.collidepoint(mouse)
+        pygame.draw.rect(canvas, (210, 75, 75) if hx else (150, 52, 52), close_x, border_radius=12)
+        pygame.draw.rect(canvas, TEXT_COLOR, close_x, 3, border_radius=12)
+        xc = close_x.inflate(-24, -24)
+        pygame.draw.line(canvas, TEXT_COLOR, xc.topleft, xc.bottomright, 5)
+        pygame.draw.line(canvas, TEXT_COLOR, xc.topright, xc.bottomleft, 5)
+
+        # 成就卡片清單（支援裁切與捲動）
+        prev_clip = canvas.get_clip()
+        canvas.set_clip(list_area)
+        for idx, ach in enumerate(items):
+            cy = list_area.top + idx * (card_h + card_gap) - scroll_y
+            card_rect = pygame.Rect(list_area.left, cy, list_area.width, card_h)
+            if card_rect.bottom < list_area.top or card_rect.top > list_area.bottom:
+                continue
+
+            unlocked = ach["unlocked"]
+            card_surf = pygame.Surface(card_rect.size, pygame.SRCALPHA)
+            fill_col = (54, 46, 24, 236) if unlocked else (30, 33, 44, 224)
+            border_col = BTN_BORDER_HOVER if unlocked else (95, 100, 118)
+            pygame.draw.rect(card_surf, fill_col, card_surf.get_rect(), border_radius=16)
+            pygame.draw.rect(card_surf, border_col, card_surf.get_rect(), 3, border_radius=16)
+
+            # 左側圖示框
+            badge = pygame.Rect(24, (card_h - 100) // 2, 100, 100)
+            badge_bg = (34, 28, 16, 255) if unlocked else (22, 24, 32, 255)
+            pygame.draw.rect(card_surf, badge_bg, badge, border_radius=14)
+            pygame.draw.rect(card_surf, border_col, badge, 3, border_radius=14)
+            achievements.draw_trophy_icon(card_surf, badge, unlocked=unlocked)
+
+            # 成就名稱與狀態標籤
+            tx = badge.right + 28
+            disp_title = ach["title"] if unlocked else "？？？"
+            t_col = TITLE_COLOR if unlocked else (150, 155, 170)
+            t_surf = title_font.render(disp_title, FONT_ANTIALIAS, t_col)
+            card_surf.blit(t_surf, (tx, 22))
+
+            tag_text = "已解鎖" if unlocked else "未解鎖"
+            tag_bg = (80, 145, 70) if unlocked else (75, 78, 92)
+            tag_surf = body_font.render(tag_text, FONT_ANTIALIAS, TEXT_COLOR if unlocked else (185, 190, 200))
+            tag_rect = tag_surf.get_rect(topright=(card_rect.width - 28, 24))
+            pygame.draw.rect(card_surf, tag_bg, tag_rect.inflate(24, 10), border_radius=10)
+            card_surf.blit(tag_surf, tag_rect)
+
+            # 描述文字（未解鎖時顯示條件提示與目前進度）
+            if unlocked:
+                desc_text = ach["description"]
+                desc_col = (240, 236, 220)
+            else:
+                hint_txt = ach.get("hint", "達成隱藏條件即可解鎖")
+                if "target_value" in ach:
+                    cur = min(ach.get("progress", 0), ach["target_value"])
+                    desc_text = f"解鎖條件：{hint_txt}（目前進度：{cur} / {ach['target_value']}）"
+                else:
+                    desc_text = f"解鎖條件：{hint_txt}"
+                desc_col = (145, 150, 165)
+
+            dy = 82
+            for ln in _wrap(desc_text, body_font, card_rect.width - tx - 28)[:2]:
+                if ln:
+                    card_surf.blit(body_font.render(ln, FONT_ANTIALIAS, desc_col), (tx, dy))
+                dy += body_font.get_linesize() + 4
+
+            canvas.blit(card_surf, card_rect)
+        canvas.set_clip(prev_clip)
+
+        # 底部關閉按鈕
+        hc = close_btn.collidepoint(mouse)
+        cb_surf = pygame.Surface(close_btn.size, pygame.SRCALPHA)
+        pygame.draw.rect(cb_surf, BTN_FILL_HOVER if hc else BTN_FILL, cb_surf.get_rect(), border_radius=14)
+        pygame.draw.rect(cb_surf, BTN_BORDER_HOVER if hc else BTN_BORDER, cb_surf.get_rect(), 3, border_radius=14)
+        canvas.blit(cb_surf, close_btn)
+        ct = body_font.render("關閉（Esc）", FONT_ANTIALIAS, BTN_BORDER_HOVER if hc else TEXT_COLOR)
+        canvas.blit(ct, ct.get_rect(center=close_btn.center))
+
+        _present(pygame.display.get_surface(), canvas)
+        pygame.display.flip()
 
 
 def _fade_out(canvas, clock, ms=500):
@@ -210,8 +372,8 @@ def run_title():
     title = _text(_make_font(TITLE_SIZE), GAME_TITLE, TITLE_COLOR, SHADOW_COLOR, 8)
     subtitle = _text(_make_font(SUBTITLE_SIZE), GAME_SUBTITLE, SUB_COLOR, (0, 0, 0))
     hint = _make_font(BODY_SIZE).render("↑↓ 選擇　Enter / 點擊 確定", FONT_ANTIALIAS, (170, 170, 170))
-    labels = ["開始遊戲", "離開遊戲"]
-    rects = _button_rects(len(labels), 640)
+    labels = ["開始遊戲", "成就", "離開遊戲"]
+    rects = _button_rects(len(labels), 560)
 
     def draw(canvas, t):
         canvas.blit(bg, (0, 0))
@@ -220,12 +382,28 @@ def run_title():
         if bomb:                                    # 炸彈在右下微微搖晃
             rot = pygame.transform.rotate(bomb, 4 * math.sin(t * 3))
             canvas.blit(rot, rot.get_rect(midbottom=(SCREEN_W - 300, SCREEN_H - 30)))
-        y = 200 + int(6 * math.sin(t * 1.5))
+        y = 175 + int(6 * math.sin(t * 1.5))
         canvas.blit(title, title.get_rect(midtop=(SCREEN_W // 2, y)))
         canvas.blit(subtitle, subtitle.get_rect(midtop=(SCREEN_W // 2, y + title.get_height() + 30)))
         canvas.blit(hint, hint.get_rect(midbottom=(SCREEN_W // 2, SCREEN_H - 40)))
 
-    return "start" if _menu_loop(draw, labels, rects) == 0 else "quit"
+    first_entry = True
+    selected = 0
+    while True:
+        choice = _menu_loop(
+            draw, labels, rects,
+            fade_in=first_entry,
+            no_fade_indices={1},
+            initial_selected=selected,
+        )
+        first_entry = False
+        if choice == 0:
+            return "start"
+        if choice == 1:
+            selected = 1
+            _show_achievements_modal(draw)
+            continue
+        return "quit"
 
 
 def run_ending(success):

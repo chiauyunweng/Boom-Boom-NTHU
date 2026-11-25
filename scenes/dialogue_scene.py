@@ -17,6 +17,7 @@ from pathlib import Path
 
 import pygame
 
+import achievements
 from scenes import music, sfx, volume
 
 # ---------------- 路徑 ----------------
@@ -201,6 +202,7 @@ def _present(screen, canvas):
     if (win_w, win_h) == (SCREEN_W, SCREEN_H):
         screen.blit(canvas, (0, 0))
         volume.draw_overlay(screen, 1, (0, 0))    # 左上角音量鈕（畫在視窗上，不弄髒 canvas）
+        achievements.draw_overlay(screen, 1, (0, 0))  # 右側滑入成就通知
         return
     scale = min(win_w / SCREEN_W, win_h / SCREEN_H)
     scaled_w = max(1, int(SCREEN_W * scale))
@@ -211,6 +213,7 @@ def _present(screen, canvas):
     screen.fill((0, 0, 0))
     screen.blit(scaled, (offset_x, offset_y))
     volume.draw_overlay(screen, scale, (offset_x, offset_y))
+    achievements.draw_overlay(screen, scale, (offset_x, offset_y))
 
 
 _last_virtual_surface = None

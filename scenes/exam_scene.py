@@ -18,6 +18,7 @@ import sys
 
 import pygame
 
+import achievements
 from scenes import music, sfx
 from scenes.alchemy_scene import _panel
 from scenes.dialogue_scene import (
@@ -207,6 +208,7 @@ def _show_tle(bg):
     clock = pygame.time.Clock()
     surf = _outlined(_make_font(TLE_TEXT_SIZE), "TLE", TEXT_COLOR, TLE_OUTLINE_PX)
     sfx.play("timeout")
+    achievements.record_tle()                 # 累計 TLE 次數，達 5 次即觸發「二退程設」成就通知
     pygame.event.clear()
     clock.tick()
     elapsed = 0

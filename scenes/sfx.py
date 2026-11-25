@@ -19,6 +19,7 @@ ASSET_ROOT = Path(__file__).resolve().parent.parent / "assets"
 FISHERMAN_SOUNDS = [f"fisherman_sound_{i}" for i in range(1, 5)]
 FISHERMAN_VOLUME = 1.0        # 漁夫語音音量固定為 1.0（最大音量，為 BGM 0.1 的 10 倍大聲）
 FISHERMAN_BGM_DUCK_VOLUME = 0.1   # 播放漁夫語音時，確保 BGM 壓在 <= 0.1（10 倍音量比）
+ACHIEVEMENT_SOUND_NAME = "achievement_unlock"
 VOLUME = 0.5                  # 全部音效的預設總音量 0~1（遊戲中可用左上角音量鈕調整）
 
 # 合成音效：每段為 (波形, 起始頻率, 結束頻率, 長度 ms, 音量)；波形 square / sine / noise / rest
@@ -278,6 +279,44 @@ def play_random_fisherman_sound(source="未指定來源"):
         print(f"[DEBUG][Fisherman Sound] 觸發來源: {source} | 隨機播放音檔: {file_label} | 語音音量: {vol} (BGM音量: {bgm_vol}, 10x比例)")
 
 
+def _load_achievement_sound():
+    """預載成就解鎖音效（優先搜尋 assets/bgm/achievement_unlock.wav，其次 assets/sfx/）。"""
+    if not _ready():
+        return None
+    if ACHIEVEMENT_SOUND_NAME in _cache:
+        return _cache[ACHIEVEMENT_SOUND_NAME]
+    snd = None
+    for directory in (BGM_DIR, SFX_DIR, ASSET_ROOT):
+        for ext in (".wav", ".ogg", ".mp3"):
+            path = directory / f"{ACHIEVEMENT_SOUND_NAME}{ext}"
+            if path.exists():
+                try:
+                    snd = pygame.mixer.Sound(str(path))
+                    snd.set_volume(max(_volume, 0.85))
+                except pygame.error as e:
+                    print(f"[sfx] 載入成就音效失敗 {path}：{e}")
+                    snd = None
+                break
+        if snd is not None:
+            break
+    if snd is None:
+        # 備援：若音檔遺失則回退使用內建成功音效
+        snd = _get("success")
+    _cache[ACHIEVEMENT_SOUND_NAME] = snd
+    return snd
+
+
+def play_achievement_sound():
+    """播放 Steam 風格成就解鎖音效。"""
+    if not _ready():
+        return
+    snd = _load_achievement_sound()
+    if snd is not None:
+        snd.set_volume(max(_volume, 0.85) if _volume > 0 else 0.0)
+        snd.stop()
+        snd.play()
+
+
 def preload():
     """遊戲開始時先把所有音效準備好，避免第一次播放時卡頓。"""
     if not _ready():
@@ -285,3 +324,4 @@ def preload():
     for name in SYNTH:
         _get(name)
     _load_fisherman_sounds()
+    _load_achievement_sound()
